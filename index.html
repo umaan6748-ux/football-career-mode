@@ -1,1 +1,32 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Football Career Mode</title></head><body style="font-family:sans-serif;background:#08120d;color:#f4fff7;padding:40px"><h1>Football Career Mode</h1><p>Uploading full game… Refresh soon.</p></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Football Career Mode</title>
+</head>
+<body style="margin:0;background:#08120d;color:#7dff9f;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh">
+<p id="s">Loading Football Career Mode…</p>
+<script>
+async function main(){
+  try {
+    const n = 6;
+    let b64 = "";
+    for(let i=0;i<n;i++){
+      const r = await fetch("data/chunk_"+i+".txt");
+      b64 += await r.text();
+    }
+    const bin = Uint8Array.from(atob(b64.trim()), c=>c.charCodeAt(0));
+    const ds = new DecompressionStream("gzip");
+    const stream = new Blob([bin]).stream().pipeThrough(ds);
+    const html = await new Response(stream).text();
+    document.open(); document.write(html); document.close();
+  } catch(e) {
+    document.getElementById("s").textContent = "Load failed: " + e + ". Try Chrome or Firefox.";
+    console.error(e);
+  }
+}
+main();
+</script>
+</body>
+</html>
