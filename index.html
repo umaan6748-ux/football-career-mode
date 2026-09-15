@@ -10,10 +10,11 @@
 <script>
 async function main(){
   try {
-    const n = 6;
+    const n = 17;
     let b64 = "";
     for(let i=0;i<n;i++){
-      const r = await fetch("data/chunk_"+i+".txt");
+      const r = await fetch("data/p"+i+".txt");
+      if(!r.ok) throw new Error("Missing data/p"+i+".txt ("+r.status+")");
       b64 += await r.text();
     }
     const bin = Uint8Array.from(atob(b64.trim()), c=>c.charCodeAt(0));
@@ -22,7 +23,7 @@ async function main(){
     const html = await new Response(stream).text();
     document.open(); document.write(html); document.close();
   } catch(e) {
-    document.getElementById("s").textContent = "Load failed: " + e + ". Try Chrome or Firefox.";
+    document.getElementById("s").innerHTML = "Load failed: "+e+"<br><br>Open this site via GitHub Pages (https), not file://";
     console.error(e);
   }
 }
