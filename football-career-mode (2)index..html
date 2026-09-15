@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Football Career Mode</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#08120d;color:#f4fff7}
+.app{max-width:1100px;margin:auto;padding:24px}.card{background:#102119;border:1px solid #234b37;border-radius:16px;padding:22px;margin:14px 0;box-shadow:0 8px 30px #0005}
+h1{margin-top:0;color:#7dff9f}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+label{display:block;font-size:13px;color:#a9c8b2;margin-bottom:6px}input,select,button{width:100%;padding:12px;border-radius:10px;border:1px solid #356348;background:#0a1710;color:white}
+button{cursor:pointer;background:#168341;border:0;font-weight:bold}button:hover{background:#1ca552}
+.club{display:flex;justify-content:space-between;gap:12px;padding:12px;border-bottom:1px solid #244232}.club:last-child{border:0}
+.badge{padding:4px 8px;border-radius:999px;background:#183c29;color:#8cffaa;font-size:12px}.muted{color:#a7b8ad}.hidden{display:none}
+.stat{font-size:24px;font-weight:bold}.bar{height:10px;background:#1a3024;border-radius:8px;overflow:hidden}.fill{height:100%;background:#54df7d}
+.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.log{max-height:240px;overflow:auto;line-height:1.5}
+.small{font-size:12px}
+#majorPopup{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;align-items:center;justify-content:center;padding:20px;overflow:auto}
+#majorPopup:not(.hidden){display:flex}
+#majorPopup .card{max-height:90vh;overflow:auto}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>⚽ Football Career Mode</h1>
+<div id="setup" class="card">
+<h2>Create Your Player</h2>
+<div class="grid">
+<div><label>Name</label><input id="name" placeholder="Your name"></div>
+<div><label>Age</label><input id="age" type="number" value="16" min="15" max="35"></div>
+<div><label>Country</label><select id="country"></select></div>
+<div><label>Position</label><select id="position">
+<option>GK</option><option>CB</option><option>LB</option><option>RB</option>
+<option>CDM</option><option>CM</option><option>CAM</option><option>LM</option><option>RM</option>
+<option>LW</option><option>RW</option><option>ST</option>
+</select></div>
+<div style="grid-column:1/-1"><label>Signature Celebration</label><select id="sigCele"></select>
+<div class="muted small" style="margin-top:4px">This is your trademark celebration. It always appears when you score. You can change it later.</div></div>
+</div>
+<button onclick="startCareer()" style="margin-top:16px">START CAREER</button>
+<button id="continueBtn" class="hidden" onclick="continueCareer()" style="margin-top:10px;background:#1a5c9e">CONTINUE SAVED CAREER</button>
+<button id="deleteSaveBtn" class="hidden" onclick="deleteSave()" style="margin-top:10px;background:#5c1a1a">DELETE SAVE & START FRESH</button>
+<div id="saveInfo" class="muted small" style="margin-top:10px"></div>
+</div>
+<div id="career" class="hidden">
+<div class="card">
+<h2 id="playerTitle"></h2>
+<div class="grid">
+<div><span class="muted">Club</span><div id="clubName" class="stat"></div></div>
+<div><span class="muted">Country</span><div id="playerCountry" class="stat"></div></div>
+<div><span class="muted">Position</span><div id="playerPos" class="stat"></div></div>
+<div><span class="muted">Age</span><div id="playerAge" class="stat"></div></div>
+</div>
+</div>
+<div class="card">
+<h2>Career</h2>
+<div class="grid">
+<div>Overall<div id="ovr" class="stat"></div></div>
+<div>Potential<div id="pot" class="stat"></div></div>
+<div>Season<div id="season" class="stat"></div></div>
+<div>Money<div id="money" class="stat"></div></div>
+<div>Goals<div id="statGoals" class="stat">0</div></div>
+<div>Assists<div id="statAssists" class="stat">0</div></div>
+<div>Clean Sheets<div id="statCS" class="stat">0</div></div>
+<div>Trophies<div id="statTrophies" class="stat">0</div></div>
+</div>
+<div style="margin-top:16px">Form <div class="bar"><div id="formbar" class="fill"></div></div></div>
+<div style="margin-top:12px">Fame <div class="bar"><div id="famebar" class="fill" style="background:#f0c14b"></div></div></div>
+<div style="margin-top:12px">Chemistry <div class="bar"><div id="chembar" class="fill" style="background:#5b9bd5"></div></div></div>
+</div>
+<div class="card" style="border-color:#3d7a4a">
+  <h2 style="margin-top:0">📰 Career News</h2>
+  <div id="log" class="log" style="max-height:180px"></div>
+</div>
+<div class="card">
+<h2>What do you do?</h2><div class="muted" style="margin-bottom:12px">Play Match opens an interactive 90-minute match. You choose what your player does during key moments.</div>
+<div class="actions">
+<button onclick="train()">Train</button>
+<button onclick="playMatch()">Play Match</button>
+<button onclick="simulateMatch()">Simulate Match</button>
+<button onclick="rest()">Rest</button>
+<button onclick="openLeagueTable()">League Table</button>
+<button onclick="changeSignature()">Change Signature Cele</button>
+</div>
+<div class="muted small" style="margin-top:10px">Play Match = interactive. Simulate Match = instant result. Transfer windows open after match 19 and after the full season.</div>
+</div>
+<div id="matchday" class="card hidden">
+  <h2>🏟️ Matchday</h2>
+  <div class="grid">
+    <div><span class="muted">Fixture</span><div id="fixture" class="stat" style="font-size:20px"></div></div>
+    <div><span class="muted">Score</span><div id="matchScore" class="stat">0 - 0</div></div>
+    <div><span class="muted">Time</span><div id="matchMinute" class="stat">1'</div></div>
+    <div><span class="muted">Your Rating</span><div id="matchRating" class="stat">6.0</div></div>
+  </div>
+  <div style="margin-top:16px">
+    <div class="grid">
+      <div>Energy <div class="bar"><div id="energyBar" class="fill" style="width:100%"></div></div></div>
+      <div>Match Momentum <div class="bar"><div id="momentumBar" class="fill" style="width:50%"></div></div></div>
+    </div>
+  </div>
+  <div id="matchCommentary" class="card" style="margin-top:16px;background:#0a1710;min-height:90px">
+    <b>COMMENTARY</b><div id="commentaryText" style="margin-top:8px">Kick-off is approaching...</div>
+  </div>
+  <div id="matchActions" class="actions">
+    <button onclick="matchAction('attack')">⚡ Attack</button>
+    <button onclick="matchAction('pass')">🎯 Pass</button>
+    <button onclick="matchAction('shoot')">🥅 Shoot</button>
+    <button onclick="matchAction('defend')">🛡️ Defend</button>
+    <button onclick="matchAction('skill')">✨ Skill Move</button>
+    <button onclick="matchAction('press')">🔥 Press</button>
+  </div>
+  <button id="finishMatchBtn" class="hidden" onclick="closeMatchday()" style="margin-top:12px">CONTINUE CAREER</button>
+</div>
+<div id="eventCard" class="card hidden"><h2 id="eventTitle">Match Event</h2><div id="eventText"></div><div id="eventChoices" class="actions" style="margin-top:12px"></div></div>
+<div id="celeCard" class="card hidden">
+  <h2>⚽ GOAL! Choose your celebration</h2>
+  <div id="celeText" class="muted" style="margin-bottom:12px">Pick how you celebrate this goal.</div>
+  <div id="celeChoices" class="actions"></div>
+</div>
+<div id="injuryCard" class="card hidden">
+  <h2 id="injuryTitle">Injury Alert</h2>
+  <div id="injuryText"></div>
+  <div id="injuryChoices" class="actions" style="margin-top:12px"></div>
+</div>
+<div id="retireCard" class="card hidden">
+  <h2>🏁 Career Crossroads</h2>
+  <div id="retireText"></div>
+  <div id="retireChoices" class="actions" style="margin-top:12px"></div>
+</div>
+<div id="ballonCard" class="card hidden">
+  <h2>🏆 Ballon d'Or</h2>
+  <div id="ballonText"></div>
+  <button onclick="closeBallon()" style="margin-top:12px">Continue</button>
+</div>
+<div id="managerCard" class="card">
+<h2>Manager & Squad</h2>
+<div class="grid">
+  <div>Manager Approval<div id="managerLike" class="stat">60</div></div>
+  <div>Team Chemistry<div id="teamChem" class="stat">65</div></div>
+  <div>Team Status<div id="teamStatus" class="stat">Trusted</div></div>
+  <div>League Games<div id="gamesPlayed" class="stat">0 / 38</div></div>
+  <div>League Position<div id="leaguePos" class="stat">-</div></div>
+  <div>World Rank<div id="worldRank" class="stat">—</div></div>
+</div>
+</div>
+<div id="dialogueCard" class="card hidden"><h2 id="dialogueTitle">Manager</h2><div id="dialogueText"></div><div id="dialogueChoices" class="actions" style="margin-top:12px"></div></div>
+<div id="dressingCard" class="card hidden"><h2 id="dressingTitle">Dressing Room</h2><div id="dressingText"></div><div id="dressingChoices" class="actions" style="margin-top:12px"></div></div>
+<div id="competitions" class="card">
+<h2>Competitions</h2>
+<div id="competitionText" class="muted">Domestic league is your main competition. European competitions unlock based on club strength and league position.</div>
+</div>
+<div id="nationalCard" class="card">
+<h2>International Career</h2>
+<div id="nationalText" class="muted">Perform well enough to earn a national-team call-up.</div>
+</div>
+</div>
+</div>
+<!-- Major event popup overlay -->
+<div id="majorPopup" class="hidden">
+  <div class="card" style="max-width:520px;width:100%;border:2px solid #7dff9f;box-shadow:0 0 40px #16834188;margin:0">
+    <h2 id="majorTitle" style="margin-top:0;color:#7dff9f"></h2>
+    <div id="majorText" style="line-height:1.6;margin-bottom:16px"></div>
+    <div id="majorChoices" class="actions"></div>
+  </div>
+</div>
+<script>
+const countries = [
+"England","France","Spain","Brazil","Saudi Arabia","Germany","Italy","Portugal","Netherlands",
+"Argentina","Mexico","USA","Japan","South Korea","Turkey","Scotland","Belgium","Austria",
+"Switzerland","Greece","Denmark","Sweden","Norway","Croatia","Poland","Morocco","Egypt",
+"Qatar","UAE","Australia","Canada","Colombia","Chile","Uruguay","Nigeria","Ghana","Senegal",
+"South Africa","Ireland","Wales","Yemen","Singapore","Malaysia","India"
+];
+const leagues = {
+England:["Premer League","Champoinship","Leage One","Leage Two","Nationel League"],
+France:["Ligue One","Ligue Two","Nationel"],
+Spain:["La Leega","La Leega 2","Primra RFEF"],
+Brazil:["Serie Ay","Serie Bee","Serie Cee","Serie Dee"],
+"Saudi Arabia":["Saudi Pro Leage","Saudi First Divison","Saudi Second Divison"],
+Germany:["Bundisliga","2. Bundisliga","3. Leega"],
+Italy:["Serie Ay","Serie Bee","Serie Cee"],
+Portugal:["Primera Liga","Liga Too"],
+Netherlands:["Eredivisee","Eerste Divisiee"],
+Argentina:["Liga Profesonal","Primera Nacionel"],
+Mexico:["Liga MXK","Liga de Expanson"],
+USA:["MLSS","USL Champoinship"],
+Japan:["J1 Leage","J2 Leage"],
+"South Korea":["K Leage 1","K Leage 2"],
+Turkey:["Super Leeg","1. Leeg"],
+Scotland:["Premiershipp","Champoinship"],
+Belgium:["Pro Leage","Challenger Pro Leage"],
+Austria:["Bundisliga","2. Leega"],
+Switzerland:["Super Leage","Challenge Leage"],
+Greece:["Super Leage"],
+Denmark:["Superligaa"],
+Sweden:["Allsvenskann"],
+Norway:["Eliteseriien"],
+Croatia:["HNLL"],
+Poland:["Ekstraklasaa"],
+Morocco:["Botola Proo"],
+Egypt:["Premer Leage"],
+Qatar:["Stars Leage"],
+UAE:["Pro Leage"],
+Australia:["A-Leage"],
+Canada:["Premer Leage"],
+Colombia:["Primera Ay"],
+Chile:["Primera Divison"],
+Uruguay:["Primera Divison"],
+Nigeria:["NPFLL"],
+Ghana:["Premer Leage"],
+"South Africa":["Premiershipp"],
+Ireland:["Premer Division"],
+Wales:["Cymru Premierr"],
+Yemen:["Yemeni Leage"],
+Singapore:["Premer Leage"],
+Malaysia:["Super Leage"],
+India:["Super Leage"]
+};
+// A large fictional database. Names are deliberately original/altered rather than exact club branding.
+const bases = [
+["Manchestor Reds","England"],["Liverpol Rovers","England"],["Arsenall North","England"],["Chelski Blue","England"],
+["Manchestor Sky","England"],["Tottenam Hotspur","England"],["Newcastel United","England"],["Aston Villaa","England"],
+["West Ham Utd","England"],["Everton Blue","England"],["Brighton Seagulls","England"],["Crystal Palace Eagles","England"],
+["Nottingam Forest","England"],["Fulham Whites","England"],["Brentford Bees","England"],["Wolveshampton","England"],
+["Leedz United","England"],["Sunderland Black Cats","England"],["Burnley Clarets","England"],["Bournemouth Cherries","England"],
+["Paris SGX","France"],["Marseile Olympiq","France"],["Lyonnais 69","France"],["Monaco Rouge","France"],
+["Lille OSCX","France"],["Nice Azur","France"],["Rennes FC","France"],["Nantes Atlantique","France"],
+["Bordeaux Girondins","France"],["Toulouse Violet","France"],["Real Madriz","Spain"],["Barceloneta FC","Spain"],
+["Atletico Madrileno","Spain"],["Sevila FC","Spain"],["Valencia CFX","Spain"],["Villarreal Yellows","Spain"],
+["Real Sociedaad","Spain"],["Athletico Bilbao","Spain"],["Betis Verde","Spain"],["Girona Reds","Spain"],
+["Flamengo RJ","Brazil"],["Palmeirass","Brazil"],["Corinthians SP","Brazil"],["Sao Paulo FCX","Brazil"],
+["Santos FCX","Brazil"],["Gremio Porto","Brazil"],["Internacionall","Brazil"],["Cruzeiro Azul","Brazil"],
+["Atletico Mineiro","Brazil"],["Botafogo FR","Brazil"],["Al Hilall","Saudi Arabia"],["Al Nassr Riyadh","Saudi Arabia"],
+["Al Ittihad Jeddah","Saudi Arabia"],["Al Ahly Jeddah","Saudi Arabia"],["Al Shabab Riyadh","Saudi Arabia"],
+["Al Ettifaq","Saudi Arabia"],["Al Qadsiah","Saudi Arabia"],["Al Taawoun","Saudi Arabia"],["Neom SCX","Saudi Arabia"],
+["Bayern Munchen","Germany"],["Borusia Dortmund","Germany"],["RB Lipsig","Germany"],["Bayer Leverkusen","Germany"],
+["Juventus Turin","Italy"],["Inter Milan FC","Italy"],["AC Milanno","Italy"],["Napoli Blues","Italy"],
+["AS Roma","Italy"],["Lazio Rome","Italy"],["Benfica Lisboa","Portugal"],["Porto Azul","Portugal"],
+["Sporting Lisboa","Portugal"],["Ajax Amsterdam","Netherlands"],["PSV Eindhoven","Netherlands"],["Feyenoord R'dam","Netherlands"],
+["River Plate","Argentina"],["Boca Juniors","Argentina"],["Club America","Mexico"],["Monterey CF","Mexico"],
+["LA Galaxy","USA"],["Seattle Sounders","USA"],["Inter Miamii","USA"],["NY City FC","USA"],
+["Kashima Antlers","Japan"],["Urawa Redz","Japan"],["Yokohama Marinos","Japan"],["Seoul FC","South Korea"],
+["Galatasary","Turkey"],["Fenerbahce SK","Turkey"],["Celtic Glasgo","Scotland"],["Rangers Glasgo","Scotland"]
+];
+let clubs=[];
+const suffixes=["United","City","Athletic","Rovers","FC","Sporting","Town","Stars","Dynamo","Olympic","Wanderers","Royals","Lions","Falcons","Titans","Academy"];
+const cities=["North","South","East","West","Central","Royal","Metro","Capital","Harbor","Valley","Riverside","United","Red","Blue","Green","Golden","Silver","Elite"];
+function buildClubs(){
+  // Named "big" clubs start in top division (level 1)
+  clubs=bases.map(x=>({name:x[0],country:x[1],level:1}));
+  // Generate many clubs across divisions so each league has enough opponents
+  let i=0;
+  while(clubs.length<1200){
+    const c=countries[i%countries.length], city=cities[(i*7)%cities.length], suf=suffixes[(i*11)%suffixes.length];
+    const divs=(leagues[c]||["League"]).length;
+    const level=(i%divs)+1; // cycle through that country's divisions
+    clubs.push({name:`${city} ${suf} ${i+1}`,country:c,level});
+    i++;
+  }
+}
+buildClubs();
+function clubLeagueName(club){
+  if(!club) return "Domestic League";
+  const list=leagues[club.country];
+  if(!list||!list.length) return club.country+" League";
+  const idx=Math.min(Math.max((club.level||1)-1, 0), list.length-1);
+  return list[idx];
+}
+function divisionPool(club){
+  // Clubs in the same country AND same division level
+  const level=club.level||1;
+  let pool=clubs.filter(c=>c.country===club.country && (c.level||1)===level && c.name!==club.name);
+  // If division is thin, pad with nearby levels from same country
+  if(pool.length<19){
+    const near=clubs.filter(c=>c.country===club.country && c.name!==club.name && Math.abs((c.level||1)-level)<=1 && !pool.includes(c));
+    pool=pool.concat(near);
+  }
+  if(pool.length<12){
+    pool=clubs.filter(c=>c.country===club.country && c.name!==club.name);
+  }
+  return pool;
+}
+(function populateCountries(){
+  const sel = document.getElementById("country");
+  sel.innerHTML = "";
+  const sorted = [...countries].sort((a,b)=>a.localeCompare(b));
+  sorted.forEach(c=>{
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    sel.appendChild(opt);
+  });
+  // Default to England for a familiar start
+  sel.value = "England";
+})();
+let p=null;
+let pendingCele=null; // holds match state while celebrating
+const SAVE_KEY="footballCareerMode_v1";
+function saveGame(){
+  // Only skip if no career or already retired (retired save is cleared on hang-up only)
+  if(!p || p.retired) return;
+  try{
+    // Re-link club from name so save stays valid across reloads
+    const clubRef=p.club&&p.club.name?{name:p.club.name,country:p.club.country,level:p.club.level}:p.club;
+    const data={
+      p:{...p, club:clubRef},
+      leagueTable,
+      savedAt:Date.now()
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  }catch(e){ console.warn("Save failed", e); }
+}
+function loadGame(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+function deleteSave(){
+  localStorage.removeItem(SAVE_KEY);
+  document.getElementById("continueBtn").classList.add("hidden");
+  document.getElementById("deleteSaveBtn").classList.add("hidden");
+  document.getElementById("saveInfo").textContent="Save deleted. Create a new player below.";
+  if(typeof log==="function") log("Save deleted.");
+}
+function continueCareer(){
+  const data=loadGame();
+  if(!data || !data.p){ alert("No save found."); return; }
+  if(data.p.retired){
+    localStorage.removeItem(SAVE_KEY);
+    alert("That career already ended. Start a new one.");
+    checkForSave();
+    return;
+  }
+  p=data.p;
+  leagueTable=data.leagueTable||null;
+  // Restore club object from database
+  if(p.club && p.club.name){
+    const found=clubs.find(c=>c.name===p.club.name && c.country===p.club.country)
+      ||clubs.find(c=>c.name===p.club.name);
+    if(found) p.club=found;
+  } else if(typeof p.club==="string"){
+    p.club=clubs.find(c=>c.name===p.club)||clubs[0];
+  }
+  if(!p.leagueName) p.leagueName=clubLeagueName(p.club);
+  if(!leagueTable) buildLeagueTable();
+  document.getElementById("setup").classList.add("hidden");
+  document.getElementById("career").classList.remove("hidden");
+  log(`Welcome back, ${p.name}! Season ${p.season}, age ${p.age}, at ${p.club.name}. Progress auto-saved.`);
+  update();
+}
+function checkForSave(){
+  const data=loadGame();
+  const cont=document.getElementById("continueBtn");
+  const del=document.getElementById("deleteSaveBtn");
+  const info=document.getElementById("saveInfo");
+  if(data && data.p && !data.p.retired){
+    cont.classList.remove("hidden");
+    del.classList.remove("hidden");
+    const d=new Date(data.savedAt||Date.now());
+    info.textContent=
+      `Auto-saved: ${data.p.name} · ${data.p.club?.name||"?"} · OVR ${data.p.ovr} · Season ${data.p.season} · ${d.toLocaleString()}`;
+  } else {
+    cont.classList.add("hidden");
+    del.classList.add("hidden");
+    if(data && data.p && data.p.retired){
+      localStorage.removeItem(SAVE_KEY);
+    }
+  }
+}
+// Auto-save when leaving the page / tab / preview
+function forceSaveOnLeave(){
+  if(p && !p.retired) saveGame();
+}
+window.addEventListener("beforeunload", forceSaveOnLeave);
+window.addEventListener("pagehide", forceSaveOnLeave);
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState==="hidden") forceSaveOnLeave();
+});
+// Periodic auto-save every 20s while in career
+setInterval(()=>{ if(p && !p.retired) saveGame(); }, 20000);
+// Check for save when page loads
+setTimeout(checkForSave, 50);
+const celebrations = [
+  {name:"Siuuu!", desc:"Leap, spin mid-air and land with arms out shouting SIUUU! (Cristiano Ronaldo)"},
+  {name:"The Robot", desc:"Stiff robotic dance moves (Peter Crouch)"},
+  {name:"Hands to the Sky", desc:"Point both fingers upward in tribute (Lionel Messi)"},
+  {name:"Stop & Stare", desc:"Stand still, chest out, collar up, cold stare (Eric Cantona)"},
+  {name:"Knee Slide", desc:"Long dramatic knee slide across the pitch (Thierry Henry)"},
+  {name:"Arms Crossed", desc:"Fold arms over chest with confidence (Kylian Mbappé)"},
+  {name:"Prayer Pose", desc:"Kneel and point to the sky in prayer (Mohamed Salah)"},
+  {name:"Why Always Me?", desc:"Lift shirt to reveal the famous phrase (Mario Balotelli)"},
+  {name:"Cartwheel + Roll", desc:"Cartwheel into a forward roll, then machine-gun finish (Robbie Keane)"},
+  {name:"Corner Flag Dance", desc:"Dance around the corner flag (Roger Milla)"},
+  {name:"Klinsmann Dive", desc:"Dive dramatically onto the turf (Jürgen Klinsmann)"},
+  {name:"Knock-out Punch", desc:"Shadow-box and throw a knockout punch (Wayne Rooney)"},
+  {name:"It's Cold", desc:"Shiver and rub arms as if freezing (Cole Palmer)"},
+  {name:"Single Arm Raised", desc:"Calm single arm raised to the crowd (Alan Shearer)"},
+  {name:"Heart Hands", desc:"Shape a heart with both hands (Zlatan / Di María style)"},
+  {name:"Shirt Over Head", desc:"Pull shirt over your head and run (Fabrizio Ravanelli)"},
+  {name:"Arms Wide Open", desc:"Stand still, arms outstretched wide to the crowd (Jude Bellingham)"},
+  {name:"Griezmann Dance", desc:"The famous Fortnite / choreographed dance (Antoine Griezmann)"},
+  {name:"Neymar Shhh", desc:"Finger to lips — silence the crowd (Neymar Jr)"},
+  {name:"Neymar Flips", desc:"Acrobatic backflips after the goal (Neymar Jr)"},
+  {name:"Baby Rocking", desc:"Rock an imaginary baby in your arms (Bebeto / many fathers)"},
+  {name:"Archer", desc:"Draw and fire an imaginary bow (Gareth Bale / others)"},
+  {name:"Zen Pose", desc:"Kneel in calm meditation (Erling Haaland)"},
+  {name:"Mask On", desc:"Pull an imaginary mask over your face (Daniel Sturridge style)"},
+  {name:"Phone Call", desc:"Mime answering a phone call (various modern players)"},
+  {name:"Bottom Shuffle", desc:"Seated bottom-shuffle celebration (Luis Suárez style)"},
+  {name:"Aeroplane", desc:"Arms out like wings, running (classic aeroplane cele)"},
+  {name:"Backflip", desc:"Full backflip landing (Aghahowa / LuaLua style)"}
+];
+// Populate signature celebration dropdown on load
+(function populateSigCele(){
+  const sel=document.getElementById("sigCele");
+  if(!sel) return;
+  celebrations.forEach((c,i)=>{
+    const opt=document.createElement("option");
+    opt.value=i;
+    opt.textContent=c.name;
+    sel.appendChild(opt);
+  });
+  sel.value="0";
+})();
+let _pendingStart=null;
+function startCareer(){
+  const name=document.getElementById("name").value.trim()||"Young Star";
+  const country=document.getElementById("country").value, pos=document.getElementById("position").value;
+  const age=+document.getElementById("age").value;
+  const sigIdx=+document.getElementById("sigCele").value||0;
+  // Age influences starting division: younger → lower leagues more often
+  let preferredLevels;
+  if(age<=17) preferredLevels=[3,4,5,2];
+  else if(age<=19) preferredLevels=[2,3,4,1];
+  else if(age<=22) preferredLevels=[1,2,3];
+  else preferredLevels=[1,2,3,4];
+  const national=clubs.filter(c=>c.country===country);
+  const picks=[];
+  const used=new Set();
+  // Prefer clubs matching age-appropriate divisions
+  for(const lv of preferredLevels){
+    const pool=national.filter(c=>(c.level||1)===lv && !used.has(c.name));
+    pool.sort(()=>Math.random()-0.5);
+    for(const c of pool){
+      if(picks.length>=6) break;
+      picks.push(c); used.add(c.name);
+    }
+    if(picks.length>=6) break;
+  }
+  // Fill from any national club
+  const rest=national.filter(c=>!used.has(c.name)).sort(()=>Math.random()-0.5);
+  for(const c of rest){
+    if(picks.length>=6) break;
+    picks.push(c); used.add(c.name);
+  }
+  // Absolute fallback
+  while(picks.length<6){
+    const c=clubs[Math.floor(Math.random()*clubs.length)];
+    if(used.has(c.name)) continue;
+    picks.push(c); used.add(c.name);
+  }
+  _pendingStart={name,country,pos,age,sigIdx,picks};
+  let html=`<p>Based on your age (<b>${age}</b>) and nationality (<b>${country}</b>), these clubs want to sign you. Pick one:</p>`;
+  picks.forEach((c,i)=>{
+    const lg=clubLeagueName(c);
+    const stars="★".repeat(c.level||1)+"☆".repeat(5-(c.level||1));
+    html+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #244232">
+      <div><b>${c.name}</b><br><span class="muted">${lg} · ${c.country} · ${stars}</span></div>
+      <button style="width:120px;flex-shrink:0" onclick="confirmStartClub(${i})">Join</button>
+    </div>`;
+  });
+  showMajor("🏟️ Choose your first club", html, "");
+  majorChoices.innerHTML="";
+}
+function confirmStartClub(idx){
+  const s=_pendingStart;
+  if(!s||!s.picks[idx]) return;
+  hideMajor();
+  const club=s.picks[idx];
+  // Younger starters slightly lower OVR/pot
+  let ovr=58, pot=78;
+  if(s.age<=16){ ovr=55; pot=82; }
+  else if(s.age<=18){ ovr=57; pot=80; }
+  else if(s.age>=28){ ovr=62; pot=72; }
+  else if(s.age>=24){ ovr=60; pot=75; }
+  p={name:s.name,country:s.country,pos:s.pos,age:s.age,club,ovr,pot,season:1,money:500,form:70,fame:10,goals:0,assists:0,managerLike:60,teamChem:65,games:0,wins:0,draws:0,losses:0,points:0,leaguePos:12,cleanSheets:0,trophies:0,international:false,worldCup:false,competition:"Domestic League",injured:false,injuryGames:0,suspended:0,retired:false,ballonWins:0,seasonGoals:0,seasonAssists:0,top30:false,refusedRetire:false,wage:800,contractYears:3,_midWindowDone:false,signature:celebrations[s.sigIdx].name,inventedSkills:[]};
+  document.getElementById("setup").classList.add("hidden");
+  document.getElementById("career").classList.remove("hidden");
+  p.leagueName=clubLeagueName(club);
+  buildLeagueTable();
+  log(`Welcome ${s.name}! You joined ${club.name} (${p.leagueName}, ${club.country}).`);
+  log(`Fixtures and the league table use clubs from your division only.`);
+  update();
+}
+function update(){
+  if(!p)return;
+  playerTitle.textContent=p.name+(p.top30?" 🌟":"")+(p.signature?" · ★ "+p.signature:"");
+  clubName.textContent=p.club.name;
+  playerCountry.textContent=p.country;
+  playerPos.textContent=p.pos;
+  playerAge.textContent=p.age+(p.injured?" (Injured)":"")+(p.suspended>0?" (Suspended "+p.suspended+")":"");
+  const cap=ageOvrCap(p.age,p.pos);
+  ovr.textContent=p.ovr+(p.ovr>=cap?" (age max)":"");
+  pot.textContent=p.pot+(p.ovr>p.pot?" (exceeded!)":"")+" · cap "+cap;
+  season.textContent=p.season; money.textContent="$"+p.money.toLocaleString();
+  statGoals.textContent=p.goals;
+  statAssists.textContent=p.assists;
+  statCS.textContent=p.cleanSheets;
+  statTrophies.textContent=p.trophies+(p.ballonWins?` (+${p.ballonWins} Bd'Or)`:"");
+  gamesPlayed.textContent=p.games+" / 38";
+  leaguePos.textContent=p.leaguePos;
+  managerLike.textContent=p.managerLike;
+  teamChem.textContent=p.teamChem;
+  teamStatus.textContent=p.managerLike>=80?"Key Player":p.managerLike>=65?"Trusted":p.managerLike>=45?"Squad Player":"On Thin Ice";
+  worldRank.textContent=p.top30?(p.ovr>=95?"Top 5":p.ovr>=92?"Top 15":"Top 30"):"—";
+  const lg=p.leagueName||clubLeagueName(p.club);
+  competitionText.textContent=lg+" · "+p.competition+" · Wage $"+p.wage.toLocaleString()+"/wk · Contract "+p.contractYears+"y · "+p.wins+"W "+p.draws+"D "+p.losses+"L · "+p.points+" pts"+(p.ballonWins?" · 🏆 Bd'Or ×"+p.ballonWins:"");
+  nationalText.textContent=p.international ? "🇺🇳 You have earned a national-team call-up! World Cup qualification is now possible." : `OVR ${p.ovr}. Required range: 75–80 depending on your national team's strength.`;
+  formbar.style.width=p.form+"%";
+  famebar.style.width=Math.min(100,p.fame)+"%";
+  chembar.style.width=Math.min(100,Math.max(0,p.teamChem))+"%";
+  saveGame();
+}
+function log(s){document.getElementById("log").innerHTML=`<div>• ${s}</div>`+document.getElementById("log").innerHTML}
+function train(){
+  if(p.injured){log("You are injured and cannot train.");return;}
+  if(p.retired){log("You have retired.");return;}
+  let gain=Math.floor(Math.random()*3)+1;
+  if(p.ovr>=95) gain=Math.random()<.35?1:0;
+  else if(p.ovr>=p.pot) gain=Math.random()<.45?1:0;
+  gain=clampOvrGain(gain);
+  p.ovr=p.ovr+gain;
+  p.form=Math.min(100,p.form+4); p.money=Math.max(0,p.money-50);
+  log(`Training session complete. Overall +${gain}${p.ovr>p.pot?" (past potential!)":""}.`);
+  checkTop30();
+  maybeInjury("training");
+  maybeDressingRoom();
+  update();
+}
+let liveMatch=null;
+const teamNames = {
+  England:["Manchestor Reds","Liverpol Rovers","Arsenall North","Chelski Blue","Manchestor Sky","Tottenam Hotspur","Newcastel United","Aston Villaa","West Ham Utd","Everton Blue","Brighton Seagulls","Crystal Palace Eagles","Nottingam Forest","Fulham Whites","Brentford Bees","Wolveshampton","Leedz United","Sunderland Black Cats","Burnley Clarets","Bournemouth Cherries"],
+  France:["Paris SGX","Marseile Olympiq","Lyonnais 69","Monaco Rouge","Lille OSCX","Nice Azur","Rennes FC","Nantes Atlantique","Bordeaux Girondins","Toulouse Violet"],
+  Spain:["Real Madriz","Barceloneta FC","Atletico Madrileno","Sevila FC","Valencia CFX","Villarreal Yellows","Real Sociedaad","Athletico Bilbao","Betis Verde","Girona Reds"],
+  Brazil:["Flamengo RJ","Palmeirass","Corinthians SP","Sao Paulo FCX","Santos FCX","Gremio Porto","Internacionall","Cruzeiro Azul","Atletico Mineiro","Botafogo FR"],
+  "Saudi Arabia":["Al Hilall","Al Nassr Riyadh","Al Ittihad Jeddah","Al Ahly Jeddah","Al Shabab Riyadh","Al Ettifaq","Al Qadsiah","Al Taawoun","Neom SCX"]
+};
+function startMatchday(){
+  if(p.retired){log("You have retired.");return;}
+  if(p.injured){log("You are injured and cannot play.");return;}
+  if(p.games>=38){log("All 38 league matches have been played. The season is already complete.");return;}
+  const pool=divisionPool(p.club);
+  let opponent=pool[Math.floor(Math.random()*pool.length)]||clubs.find(c=>c.name!==p.club.name);
+  const home=Math.random()<.5;
+  const leagueName=clubLeagueName(p.club);
+  liveMatch={
+    opponent,home,minute:1,homeScore:0,awayScore:0,rating:6.0,energy:100,momentum:50,
+    shots:0,shotsOn:0,goals:0,assists:0,events:0,finished:false,league:leagueName
+  };
+  matchday.classList.remove("hidden");
+  matchActions.classList.remove("hidden");
+  finishMatchBtn.classList.add("hidden");
+  fixture.textContent=`${leagueName}: ${home?p.club.name:opponent.name} vs ${home?opponent.name:p.club.name}`;
+  commentaryText.textContent="The referee checks his watch... KICK-OFF!";
+  updateMatchUI();
+  document.getElementById("matchday").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function updateMatchUI(){
+  if(!liveMatch)return;
+  matchScore.textContent=`${liveMatch.homeScore} - ${liveMatch.awayScore}`;
+  matchMinute.textContent=liveMatch.minute+"'";
+  matchRating.textContent=liveMatch.rating.toFixed(1);
+  energyBar.style.width=liveMatch.energy+"%";
+  momentumBar.style.width=liveMatch.momentum+"%";
+}
+function matchAction(action){
+  if(!liveMatch || liveMatch.finished)return;
+  const m=liveMatch;
+  const pos=p.pos;
+  const attacking=["ST","LW","RW","CAM","LM","RM"].includes(pos);
+  const midfield=["CM","CDM","CAM","LM","RM"].includes(pos);
+  let advance=10+Math.floor(Math.random()*12); // faster matches (~6–9 actions to full time)
+  let text="";
+  let ratingChange=0;
+  let momentumChange=0;
+  if(action==="attack"){
+    m.energy-=8;
+    const success=Math.random() < Math.min(.82,.48+p.ovr/200+(attacking?.12:0));
+    momentumChange=success?9:-4;
+    ratingChange=success?.25:-.08;
+    text=success?"You burst forward and create space!":"You try to push forward, but the defence closes you down.";
+  } else if(action==="pass"){
+    m.energy-=3;
+    const success=Math.random() < Math.min(.94,.68+p.ovr/250+(midfield?.10:0));
+    momentumChange=success?5:-2;
+    ratingChange=success?.18:-.04;
+    if(success && Math.random()<.12){
+      m.assists++;
+      const playerScores=0.55+p.ovr/220;
+      if(Math.random()<playerScores){ if(p.club.name===m.opponent.name){}; scoreForPlayer(); text="🎯 INCREDIBLE PASS! Your teammate finishes!"; ratingChange+=.65; }
+      else text="🎯 Perfect through ball, but the finish is saved.";
+    } else text=success?"Crisp passing keeps your team moving.":"Your pass is intercepted.";
+  } else if(action==="shoot"){
+    m.energy-=10;m.shots++;
+    const on=Math.random()<Math.min(.82,.32+p.ovr/180+(pos==="ST"?.18:0));
+    if(on)m.shotsOn++;
+    const goal=on && Math.random()<Math.min(.72,.18+p.ovr/180+(pos==="ST"?.20:0));
+    if(goal){
+      m.goals++;scoreForPlayer();
+      text="⚽ GOOOOAL! You bury the chance!";
+      ratingChange=1.0;momentumChange=15;
+      // Offer celebration choice after scoring
+      setTimeout(()=>offerCelebration(), 80);
+    }
+    else {text=on?"🥅 Great save! The keeper denies you.":"You fire wide under pressure.";ratingChange=on?.25:-.12;momentumChange=on?4:-3;}
+  } else if(action==="defend"){
+    m.energy-=4;
+    const success=Math.random()<Math.min(.9,.55+p.ovr/230+(!attacking?.08:0));
+    ratingChange=success?.22:-.06;momentumChange=success?5:-4;
+    text=success?"Strong defensive work wins the ball.":"You arrive late and the opponent keeps possession.";
+  } else if(action==="skill"){
+    m.energy-=11;
+    const success=Math.random()<Math.min(.72,.28+p.ovr/190);
+    ratingChange=success?.38:-.14;momentumChange=success?10:-5;
+    text=success?"✨ Brilliant skill move! You leave the defender behind.":"The skill move doesn't come off and you lose the ball.";
+    // 5% chance to invent a brand-new skill when successful
+    if(success && Math.random()<0.05){
+      const newSkills=[
+        "The Phantom Stepover","Elastic Rainbow","Gravity Spin","Mirror Elastico","Shadow Nutmeg",
+        "Tornado Roulette","Horizon Chop","Quantum Feint","Viper Cut","Aurora Flick"
+      ];
+      const owned=new Set(p.inventedSkills||[]);
+      const available=newSkills.filter(s=>!owned.has(s));
+      if(available.length){
+        const skill=available[Math.floor(Math.random()*available.length)];
+        p.inventedSkills=p.inventedSkills||[];
+        p.inventedSkills.push(skill);
+        p.fame=Math.min(100,p.fame+6);
+        const g=clampOvrGain(1);
+        p.ovr=p.ovr+g;
+        ratingChange+=0.5;momentumChange+=8;
+        text=`🌟 YOU INVENTED A NEW SKILL: "${skill}"! The crowd goes wild. Fame +6${g?", OVR +1":""}.`;
+        log(`🌟 New skill invented: ${skill}`);
+      }
+    }
+  } else if(action==="press"){
+    m.energy-=7;
+    const success=Math.random()<Math.min(.86,.48+p.ovr/220);
+    ratingChange=success?.2:-.04;momentumChange=success?7:-2;
+    text=success?"🔥 You press aggressively and force a mistake.":"The opponent plays through your press.";
+  }
+  // Opponent response.
+  if(Math.random()<.16){
+    const oppChance=Math.max(.12,.42-(p.ovr-60)/180);
+    if(Math.random()<oppChance){
+      if(m.home){m.awayScore++;}else{m.homeScore++;}
+      text+=" ⚠️ Counterattack! The opponent scores.";
+      momentumChange-=12;
+    } else text+=" The defence holds firm.";
+  }
+  m.energy=Math.max(5,m.energy);
+  m.momentum=Math.max(0,Math.min(100,m.momentum+momentumChange));
+  m.rating=Math.max(4.5,Math.min(10,m.rating+ratingChange));
+  m.minute+=advance;
+  commentaryText.textContent=text;
+  updateMatchUI();
+  // Random key moments: penalty or decision
+  if(!m.finished && m.minute<85 && Math.random()<0.12){
+    const r=Math.random();
+    if(r<0.28) setTimeout(()=>triggerPenalty(), 80);
+    else if(r<0.55) setTimeout(()=>triggerTackle(), 80);
+    else setTimeout(()=>triggerDecision(), 80);
+    return; // pause match until event resolved
+  }
+  if(m.minute>=90 || m.energy<=5){
+    finishLiveMatch();
+  }
+}
+function scoreForPlayer(){
+  if(liveMatch.home){liveMatch.homeScore++;}
+  else{liveMatch.awayScore++;}
+}
+function offerCelebration(){
+  // Always include signature + 3 random others
+  const sig=celebrations.find(c=>c.name===p.signature) || celebrations[0];
+  const others=celebrations.filter(c=>c.name!==sig.name).sort(()=>Math.random()-0.5).slice(0,3);
+  const picks=[sig, ...others];
+  celeCard.classList.remove("hidden");
+  celeText.textContent=`You just scored! Your signature is "${p.signature}". Choose a celebration:`;
+  celeChoices.innerHTML=picks.map((c,i)=>
+    `<button onclick="doCelebration(${i})">${c.name===p.signature?"★ "+c.name+" (Signature)":c.name}</button>`
+  ).join("");
+  window._celePicks=picks;
+  matchActions.classList.add("hidden");
+}
+function doCelebration(idx){
+  const c=window._celePicks[idx];
+  celeCard.classList.add("hidden");
+  matchActions.classList.remove("hidden");
+  const isSig=c.name===p.signature;
+  commentaryText.textContent=`⚽ GOOOOAL! You celebrate with: ${c.name}${isSig?" ★":""} — ${c.desc}`;
+  log(`⚽ Goal celebrated: ${c.name}${isSig?" (signature)":""}`);
+  p.form=Math.min(100,p.form+2);
+  p.managerLike=Math.min(100,p.managerLike+1);
+  p.teamChem=Math.min(100,p.teamChem+1);
+  p.fame=Math.min(100,p.fame+(isSig?4:2)); // signature cele = more fame
+  updateMatchUI();
+  update();
+}
+function changeSignature(){
+  if(!p) return;
+  const list=celebrations.map((c,i)=>
+    `<button onclick="setSignature(${i})">${c.name===p.signature?"★ "+c.name:"Set: "+c.name}</button>`
+  ).join("");
+  showMajor("★ Signature Celebration",
+    `Current signature: <b>${p.signature}</b><br><br>Pick a new trademark celebration:`,
+    list+`<button onclick="hideMajor()" style="background:#234b37">Cancel</button>`);
+}
+function setSignature(idx){
+  p.signature=celebrations[idx].name;
+  hideMajor();
+  log(`★ Signature celebration set to: ${p.signature}`);
+  update();
+}
+function finishLiveMatch(){
+  if(!liveMatch || liveMatch.finished)return;
+  liveMatch.finished=true;
+  matchActions.classList.add("hidden");
+  finishMatchBtn.classList.remove("hidden");
+  celeCard.classList.add("hidden");
+  liveMatch.minute=90;
+  const m=liveMatch;
+  const playerScore=m.home ? m.homeScore : m.awayScore;
+  const oppScore=m.home ? m.awayScore : m.homeScore;
+  const result=playerScore>oppScore?"W":playerScore===oppScore?"D":"L";
+  p.games++;
+  if(result==="W"){p.wins++;p.points+=3;p.form=Math.min(100,p.form+7);p.money+=180;p.teamChem=Math.min(100,p.teamChem+2);p.fame=Math.min(100,p.fame+3);}
+  else if(result==="D"){p.draws++;p.points++;p.form=Math.min(100,p.form+1);p.money+=90;p.fame=Math.min(100,p.fame+0.5);}
+  else{p.losses++;p.form=Math.max(20,p.form-5);p.teamChem=Math.max(0,p.teamChem-2);p.fame=Math.max(0,p.fame-2);}
+  p.goals+=m.goals;p.assists+=m.assists;
+  p.seasonGoals+=m.goals;p.seasonAssists+=m.assists;
+  // Clean sheet if opponent scored 0
+  if(oppScore===0){
+    p.cleanSheets++;
+    if(["GK","CB","LB","RB","CDM"].includes(p.pos)){
+      p.fame=Math.min(100,p.fame+2);
+      p.managerLike=Math.min(100,p.managerLike+2);
+    }
+  }
+  // Update league table player row goals
+  if(leagueTable){
+    const row=leagueTable.find(t=>t.isPlayer);
+    if(row){
+      row.gf+=playerScore;
+      row.ga+=oppScore;
+    }
+  }
+  syncPlayerRow();
+  simulateOtherResults();
+  sortLeagueTable();
+  p.form=Math.max(20,Math.min(100,p.form+(m.rating>=7.5?4:0)));
+  // Fame from goals/assists/rating
+  if(m.goals>0) p.fame=Math.min(100,p.fame+m.goals*3);
+  if(m.assists>0) p.fame=Math.min(100,p.fame+m.assists*2);
+  if(m.rating>=8.0) p.fame=Math.min(100,p.fame+4);
+  else if(m.rating>=7.5) p.fame=Math.min(100,p.fame+2);
+  else if(m.rating<5.8) p.fame=Math.max(0,p.fame-3);
+  // Can exceed potential
+  if(m.rating>=8.5 && Math.random()<.35){
+    let gain=clampOvrGain(p.ovr>=95?(Math.random()<.3?1:0):1);
+    p.ovr=p.ovr+gain;
+    if(gain) log("⭐ Man of the Match-level performance! Overall +1.");
+  }
+  if(m.goals>0){p.managerLike=Math.min(100,p.managerLike+Math.min(6,m.goals*3));}
+  if(m.rating>=7.5){p.managerLike=Math.min(100,p.managerLike+3);p.teamChem=Math.min(100,p.teamChem+2);}
+  if(m.rating<5.8){p.managerLike=Math.max(0,p.managerLike-3);p.teamChem=Math.max(0,p.teamChem-3);}
+  commentaryText.textContent=`FULL TIME! ${result==="W"?"🏆 VICTORY":result==="D"?"🤝 DRAW":"❌ DEFEAT"} — ${p.club.name} ${m.homeScore}-${m.awayScore} ${m.opponent.name}. Your rating: ${m.rating.toFixed(1)}.`;
+  log(`Match ${p.games}/38: ${result==="W"?"Victory":result==="D"?"Draw":"Defeat"} vs ${m.opponent.name}. Rating ${m.rating.toFixed(1)}${m.goals?" · "+m.goals+" goal(s)":""}${m.assists?" · "+m.assists+" assist(s)":""}.`);
+  checkTop30();
+  const matchNewsData={rating:m.rating, goals:m.goals, assists:m.assists, result, opponent:m.opponent.name, red:!!m.redCarded};
+  const midWindow=p.games===19 && !p._midWindowDone;
+  if(midWindow) p._midWindowDone=true;
+  if(p.games===38) finishLeagueSeason();
+  maybeInternationalCallup();
+  maybeInjury("match");
+  const afterNews=()=>{
+    if(midWindow) openTransferWindow("Mid-Season Transfer Window");
+    else if(p._pendingRedTalk){ p._pendingRedTalk=false; managerRedCardTalk(); }
+    else {
+      if(Math.random()<.22) maybeManagerConvo();
+      if(Math.random()<.18) maybeDressingRoom();
+    }
+  };
+  if(p._pendingRedTalk && !midWindow){
+    // red talk after news if any
+    maybeMatchNews(matchNewsData, ()=>{ p._pendingRedTalk=false; managerRedCardTalk(); });
+  } else if(p.games!==38){
+    // season end handles its own flow; mid-season: news then transfer
+    maybeMatchNews(matchNewsData, afterNews);
+  } else {
+    maybeMatchNews(matchNewsData, null);
+  }
+  // Weekly wage
+  p.money+=Math.floor(p.wage);
+  update();
+}
+function closeMatchday(){
+  matchday.classList.add("hidden");
+  celeCard.classList.add("hidden");
+  liveMatch=null;
+  update();
+}
+function canPlayerFeature(){
+  // Returns {ok, reason} — if not ok, match still happens without you
+  if(p.retired) return {ok:false, reason:"retired"};
+  if(p.games>=38) return {ok:false, reason:"season_done"};
+  if(p.suspended>0) return {ok:false, reason:"suspended"};
+  if(p.injured) return {ok:false, reason:"injured"};
+  // Dropped from squad if manager / chem / form is bad
+  let dropChance=0;
+  if(p.managerLike<40) dropChance+=0.35;
+  else if(p.managerLike<50) dropChance+=0.18;
+  if(p.teamChem<40) dropChance+=0.25;
+  else if(p.teamChem<50) dropChance+=0.12;
+  if(p.form<40) dropChance+=0.30;
+  else if(p.form<55) dropChance+=0.15;
+  if(dropChance>0 && Math.random()<Math.min(0.75, dropChance)){
+    return {ok:false, reason:"not_selected"};
+  }
+  return {ok:true, reason:""};
+}
+function tickUnavailable(){
+  // Progress injury/suspension clocks when a match is played without you
+  if(p.suspended>0){
+    p.suspended--;
+    if(p.suspended<=0) log("Your suspension is over. Available next match.");
+  }
+  if(p.injured){
+    p.injuryGames--;
+    if(p.injuryGames<=0){ p.injured=false; log("You have recovered from injury."); }
+  }
+}
+function playMatch(){
+  if(p.retired){log("You have retired from professional football.");return;}
+  if(p.games>=38){log("All 38 league matches have been played. The season is already complete.");return;}
+  const av=canPlayerFeature();
+  if(!av.ok){
+    if(av.reason==="suspended") log("🟥 You are suspended — the match goes ahead without you.");
+    else if(av.reason==="injured") log("🏥 You are injured — the match goes ahead without you.");
+    else if(av.reason==="not_selected") log("📋 Manager left you out of the squad (poor form / chemistry / approval). Match simulated without you.");
+    simulateMatchWithoutPlayer(av.reason);
+    return;
+  }
+  startMatchday();
+}
+function simulateMatch(){
+  if(p.retired){log("You have retired from professional football.");return;}
+  if(p.games>=38){log("All 38 league matches have been played. The season is already complete.");return;}
+  const av=canPlayerFeature();
+  if(!av.ok){
+    if(av.reason==="suspended") log("🟥 Suspended — simulating match without you.");
+    else if(av.reason==="injured") log("🏥 Injured — simulating match without you.");
+    else if(av.reason==="not_selected") log("📋 Not selected — simulating match without you.");
+    simulateMatchWithoutPlayer(av.reason);
+    return;
+  }
+  runSimulatedMatch(true);
+}
+function simulateMatchWithoutPlayer(reason){
+  // Team plays; you get no goals/assists/rating; games still count
+  tickUnavailable();
+  const pool=divisionPool(p.club);
+  const opponent=pool[Math.floor(Math.random()*pool.length)]||clubs.find(c=>c.name!==p.club.name);
+  const home=Math.random()<.5;
+  const leagueName=clubLeagueName(p.club);
+  // Weaker without you
+  const strength=0.28 + (p.teamChem/100)*0.12 + Math.random()*0.15;
+  const roll=Math.random();
+  let result, playerScore, oppScore;
+  if(roll < strength*0.5){ result="W"; playerScore=1+Math.floor(Math.random()*2); oppScore=Math.floor(Math.random()*playerScore); }
+  else if(roll < strength*0.5+0.28){ result="D"; playerScore=Math.floor(Math.random()*2); oppScore=playerScore; }
+  else { result="L"; oppScore=1+Math.floor(Math.random()*2); playerScore=Math.floor(Math.random()*oppScore); }
+  p.games++;
+  if(result==="W"){p.wins++;p.points+=3;p.money+=90;}
+  else if(result==="D"){p.draws++;p.points++;p.money+=40;}
+  else {p.losses++;}
+  // Sitting out slightly hurts form if dropped; injury rest can help a bit
+  if(reason==="not_selected"){ p.form=Math.max(15,p.form-2); p.managerLike=Math.max(0,p.managerLike-1); }
+  if(reason==="injured") p.form=Math.min(100,p.form+1);
+  if(leagueTable){
+    const row=leagueTable.find(t=>t.isPlayer);
+    if(row){ row.gf+=playerScore; row.ga+=oppScore; }
+  }
+  syncPlayerRow(); simulateOtherResults(); sortLeagueTable();
+  const hs=home?playerScore:oppScore, as=home?oppScore:playerScore;
+  log(`⚽ ${leagueName} ${p.games}/38 (without you): ${result==="W"?"Win":result==="D"?"Draw":"Loss"} vs ${opponent.name} (${hs}-${as}).`);
+  p.money+=Math.floor(p.wage*0.5);
+  if(p.games===19 && !p._midWindowDone){
+    p._midWindowDone=true;
+    setTimeout(()=>openTransferWindow("Mid-Season Transfer Window"), 300);
+  }
+  if(p.games===38) finishLeagueSeason();
+  update();
+}
+function runSimulatedMatch(playerInSquad){
+  // Pick opponent from same division
+  const pool=divisionPool(p.club);
+  const opponent=pool[Math.floor(Math.random()*pool.length)]||clubs.find(c=>c.name!==p.club.name);
+  const home=Math.random()<.5;
+  const leagueName=clubLeagueName(p.club);
+  // Result based on OVR, form, chemistry
+  const strength=(p.ovr/100)*0.55 + (p.form/100)*0.2 + (p.teamChem/100)*0.1 + 0.15;
+  const roll=Math.random();
+  let result, playerScore, oppScore, goals=0, assists=0, rating=6.0;
+  if(roll < strength*0.55){
+    result="W";
+    playerScore=1+Math.floor(Math.random()*3);
+    oppScore=Math.floor(Math.random()*playerScore);
+  } else if(roll < strength*0.55 + 0.25){
+    result="D";
+    playerScore=Math.floor(Math.random()*3);
+    oppScore=playerScore;
+  } else {
+    result="L";
+    oppScore=1+Math.floor(Math.random()*3);
+    playerScore=Math.floor(Math.random()*oppScore);
+  }
+  // Your contribution
+  if(["ST","LW","RW","CAM"].includes(p.pos) && playerScore>0 && Math.random()<0.45+p.ovr/250){
+    goals=Math.min(playerScore, 1+Math.floor(Math.random()*2));
+  }
+  if(["CM","CAM","LM","RM","LW","RW"].includes(p.pos) && playerScore>0 && Math.random()<0.3+p.ovr/300){
+    assists=1;
+  }
+  rating=5.5 + (result==="W"?1.2:result==="D"?0.4:-0.5) + goals*0.8 + assists*0.5 + (Math.random()*1.2);
+  rating=Math.max(4.5, Math.min(9.8, rating));
+  // Apply same outcomes as interactive match
+  p.games++;
+  if(result==="W"){p.wins++;p.points+=3;p.form=Math.min(100,p.form+7);p.money+=180;p.teamChem=Math.min(100,p.teamChem+2);p.fame=Math.min(100,p.fame+3);}
+  else if(result==="D"){p.draws++;p.points++;p.form=Math.min(100,p.form+1);p.money+=90;p.fame=Math.min(100,p.fame+0.5);}
+  else{p.losses++;p.form=Math.max(20,p.form-5);p.teamChem=Math.max(0,p.teamChem-2);p.fame=Math.max(0,p.fame-2);}
+  p.goals+=goals;p.assists+=assists;
+  p.seasonGoals+=goals;p.seasonAssists+=assists;
+  if(oppScore===0) p.cleanSheets++;
+  if(goals>0){p.fame=Math.min(100,p.fame+goals*3);p.managerLike=Math.min(100,p.managerLike+Math.min(6,goals*3));}
+  if(assists>0) p.fame=Math.min(100,p.fame+assists*2);
+  if(rating>=8.0) p.fame=Math.min(100,p.fame+4);
+  else if(rating>=7.5){p.fame=Math.min(100,p.fame+2);p.managerLike=Math.min(100,p.managerLike+3);}
+  else if(rating<5.8){p.managerLike=Math.max(0,p.managerLike-3);p.fame=Math.max(0,p.fame-3);}
+  if(rating>=8.5 && Math.random()<.3){
+    let gain=clampOvrGain(p.ovr>=95?(Math.random()<.3?1:0):1);
+    p.ovr=p.ovr+gain;
+    if(gain) log("⭐ Strong simulated performance! Overall +1.");
+  }
+  if(leagueTable){
+    const row=leagueTable.find(t=>t.isPlayer);
+    if(row){ row.gf+=playerScore; row.ga+=oppScore; }
+  }
+  syncPlayerRow();
+  simulateOtherResults();
+  sortLeagueTable();
+  const hs=home?playerScore:oppScore, as=home?oppScore:playerScore;
+  log(`⚡ Simulated ${leagueName} ${p.games}/38: ${result==="W"?"Victory":result==="D"?"Draw":"Defeat"} vs ${opponent.name} (${hs}-${as}). Rating ${rating.toFixed(1)}${goals?" · "+goals+" goal(s)":""}${assists?" · "+assists+" assist(s)":""}.`);
+  p.money+=Math.floor(p.wage);
+  checkTop30();
+  const simNews={rating, goals, assists, result, opponent:opponent.name, red:false};
+  const midWindow=p.games===19 && !p._midWindowDone;
+  if(midWindow) p._midWindowDone=true;
+  if(p.games===38) finishLeagueSeason();
+  maybeInternationalCallup();
+  maybeInjury("match");
+  const afterSimNews=()=>{
+    if(midWindow) openTransferWindow("Mid-Season Transfer Window");
+    else if(p.games!==38){
+      if(Math.random()<.15) maybeManagerConvo();
+      if(Math.random()<.12) maybeDressingRoom();
+    }
+  };
+  if(p.games!==38) maybeMatchNews(simNews, afterSimNews);
+  else maybeMatchNews(simNews, null);
+  update();
+}
+const NEWS_OUTLETS=["The Daily Boot","Pitch & Pulse","Global Kick","Sunday Striker","Football Wire","Matchday Mail","Backpage Buzz","The Touchline Times","KickOff Chronicle","Stadium Sentinel"];
+function randomOutlet(){ return NEWS_OUTLETS[Math.floor(Math.random()*NEWS_OUTLETS.length)]; }
+function socialBuzz(kind){
+  const good=[
+    `On X, #${(p.name||"Player").split(" ")[0]} trended worldwide with highlight clips.`,
+    `TikTok edits of the performance racked up millions of views overnight.`,
+    `A rival fan account posted: <i>"Hate to say it… that was world class."</i>`,
+    `Pundits on late-night radio called it "a generational shift in real time."`,
+    `Memes flooded timelines — your celebration became a reaction GIF within the hour.`,
+    `A former Ballon d'Or winner quote-tweeted: <i>"This kid is special."</i>`,
+    `Club ultras posted a banner mock-up with your name already on it.`,
+    `Fantasy managers everywhere claimed they "captained the right player."`
+  ];
+  const bad=[
+    `Social media was merciless — trending with critical hashtags by full-time.`,
+    `One viral clip slowed down every mistake under the caption <i>"Not good enough."</i>`,
+    `Fan forums lit up with calls for you to be benched next week.`,
+    `A pundit wrote: <i>"Talent without discipline is just noise."</i>`,
+    `Meme pages turned the rating into a punchline within minutes.`,
+    `Rival fans piled on; even some neutrals questioned your attitude.`,
+    `An ex-pro on podcast said the display was "soft and careless."`,
+    `Your name trended for the wrong reasons — replies were brutal.`
+  ];
+  const trophy=[
+    `Parades of emoji trophies filled timelines the second the final whistle went.`,
+    `Fans flooded stories with childhood photos next to the new silverware.`,
+    `A viral thread ranked this the "most emotional lift of the decade."`,
+    `Club legends posted congratulations; the replies section never slept.`,
+    `Street parties were filmed outside the ground before the team bus even left.`,
+    `Merchandise sites crashed as demand for commemorative shirts spiked.`
+  ];
+  const ballon=[
+    `#BallonDor and your name dominated every major platform for 24 hours.`,
+    `Voting debates raged online — but the numbers left little room for argument.`,
+    `Kids in cages and cages worldwide were filmed copying your celebration.`,
+    `A documentary teaser about your rise hit a million views before breakfast.`,
+    `Sponsors scrambled; brand deals trended alongside the award graphics.`,
+    `Historians online updated "youngest / most unlikely winners" lists in real time.`
+  ];
+  const pool=kind==="good"?good:kind==="bad"?bad:kind==="ballon"?ballon:trophy;
+  return pool[Math.floor(Math.random()*pool.length)]+" "+pool[Math.floor(Math.random()*pool.length)];
+}
+let _majorOnClose=null;
+function maybeMatchNews(d, onClose){
+  if(!d||!p){ if(onClose) onClose(); return false; }
+  const spectacularGood = d.rating>=8.7 || d.goals>=2 || (d.goals>=1 && d.assists>=1 && d.rating>=8.0);
+  const spectacularBad = d.red || d.rating<=5.2 || (d.result==="L" && d.rating<=5.8);
+  if(!spectacularGood && !spectacularBad){ if(onClose) onClose(); return false; }
+  if(spectacularGood && d.rating<9.0 && d.goals<2 && Math.random()>0.55){ if(onClose) onClose(); return false; }
+  if(spectacularBad && !d.red && d.rating>5.0 && Math.random()>0.5){ if(onClose) onClose(); return false; }
+
+  const outlet=randomOutlet();
+  let headline, body, fameDelta=0;
+
+  if(d.red){
+    headline=`DISGRACE: ${p.name} sent off as ${p.club.name} stumble`;
+    body=`<b>${outlet}</b> — ${p.name} was shown a red card in the clash with ${d.opponent}, leaving teammates a player short. Pundits called the challenge "rash" and "avoidable."<br><br>${socialBuzz("bad")}`;
+    fameDelta=-3;
+  } else if(spectacularGood){
+    const hats=d.goals>=3?" HAT-TRICK HERO":d.goals>=2?" BRACE":"";
+    headline=`${p.name.toUpperCase()} STUNS ${d.opponent.toUpperCase()}${hats}`;
+    body=`<b>${outlet}</b> — What a night for ${p.name}. Rated <b>${d.rating.toFixed(1)}</b> with ${d.goals} goal(s) and ${d.assists} assist(s) as ${p.club.name} ${d.result==="W"?"took all three points":d.result==="D"?"shared the spoils":"still fell short despite his display"} against ${d.opponent}.<br><br>${socialBuzz("good")}`;
+    fameDelta=d.goals>=2?6:4;
+  } else {
+    headline=`UNDER FIRE: ${p.name} struggles in ${d.result==="L"?"defeat":"poor showing"} vs ${d.opponent}`;
+    body=`<b>${outlet}</b> — Questions are being asked of ${p.name} after a ${d.rating.toFixed(1)}-rated display against ${d.opponent}. The manager may rethink selection if form does not improve.<br><br>${socialBuzz("bad")}`;
+    fameDelta=-4;
+  }
+
+  p.fame=Math.max(0, Math.min(100, p.fame+fameDelta));
+  log(`📰 ${outlet}: ${headline}`);
+  setTimeout(()=>{
+    showMajor("📰 "+outlet,
+      `<div style="font-size:18px;font-weight:bold;margin-bottom:10px;color:#7dff9f">${headline}</div>
+       <div style="line-height:1.55">${body}</div>
+       <div class="muted" style="margin-top:12px">Fame ${fameDelta>=0?"+":""}${fameDelta}</div>`,
+      `<button onclick="hideMajor()">Close article</button>`,
+      onClose);
+  }, 200);
+  return true;
+}
+function showMajor(title, text, choicesHtml, onClose){
+  _majorOnClose=onClose||null;
+  majorTitle.textContent=title;
+  majorText.innerHTML=text;
+  majorChoices.innerHTML=choicesHtml;
+  majorPopup.classList.remove("hidden");
+  majorPopup.scrollIntoView({behavior:"smooth",block:"center"});
+}
+function hideMajor(){
+  majorPopup.classList.add("hidden");
+  if(_majorOnClose){ const cb=_majorOnClose; _majorOnClose=null; cb(); }
+}
+function buildBallonRanking(){
+  // Fictional top 30 with player at #1
+  const names=["Luka Vesić","João Ferrara","Amadou Keita","Hiro Tanaka","Mateo Ruiz","Erik Lindqvist","Omar Haddad",
+    "Pavel Novak","Diego Solano","Kenji Watanabe","Marcus Hale","Youssef Benali","Andrei Petrov","Leo Martins",
+    "Samir Okonkwo","Felix Braun","Rafael Costa","Noah Bergman","Chris Okello","Ivan Petrovic","Hugo Blanc",
+    "Tomás Silva","Kai Nakamura","Eliot March","Bruno Almeida","Sami El-Sayed","Victor Nkosi","Jonas Keller","Arjun Mehta"];
+  const rows=[{rank:1,name:p.name,club:p.club.name,country:p.country,you:true}];
+  const shuffled=[...names].sort(()=>Math.random()-0.5);
+  for(let i=0;i<29;i++){
+    rows.push({rank:i+2,name:shuffled[i],club:["Real Madriz","Barceloneta FC","Manchestor Reds","Bayern Munchen","Paris SGX","Inter Milan FC","Ajax Amsterdam"][i%7],country:["Spain","France","Brazil","Germany","England","Portugal","Argentina"][i%7],you:false});
+  }
+  let html=`<div style="max-height:40vh;overflow:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font-size:13px">
+    <tr style="color:#a9c8b2;text-align:left"><th style="padding:4px">#</th><th>Player</th><th>Club</th></tr>`;
+  rows.forEach(r=>{
+    const hl=r.you?'background:#1a4a2e;color:#7dff9f;font-weight:bold':'';
+    html+=`<tr style="${hl}"><td style="padding:5px 4px">${r.rank}</td><td>${r.you?"▶ ":""}${r.name}</td><td class="muted">${r.club}</td></tr>`;
+  });
+  html+=`</table></div>`;
+  return html;
+}
+function showTrophyNews(trophyName, extra, onDone){
+  const outlet=randomOutlet();
+  const isBallon=trophyName==="Ballon d'Or";
+  let headline, body;
+  if(isBallon){
+    headline=`BALLON D'OR: ${p.name.toUpperCase()} NAMED WORLD'S BEST`;
+    body=`<b>${outlet}</b> — ${p.name} has won the Ballon d'Or. Season haul: <b>${p.seasonGoals} goals</b>, <b>${p.seasonAssists} assists</b> for ${p.club.name}. Total Ballon d'Or wins: <b>${p.ballonWins}</b>.<br><br>${socialBuzz("ballon")}<br><br><b>Final Top 30 ranking</b>${buildBallonRanking()}`;
+  } else {
+    headline=`${p.club.name.toUpperCase()} LIFT THE ${trophyName.toUpperCase()}!`;
+    body=`<b>${outlet}</b> — ${p.name} and ${p.club.name} are champions. ${extra||""}<br><br>${socialBuzz("trophy")}`;
+  }
+  log(`📰 ${outlet}: ${headline}`);
+  _trophyNewsCb=onDone||null;
+  window._trophyNewsName=trophyName;
+  window._trophyNewsExtra=extra||"";
+  showMajor("📰 "+outlet,
+    `<div style="font-size:18px;font-weight:bold;margin-bottom:10px;color:#7dff9f">${headline}</div>
+     <div style="line-height:1.55">${body}</div>`,
+    `<button onclick="afterTrophyNews()">Continue</button>`,
+    null);
+}
+let _trophyNewsCb=null;
+function afterTrophyNews(){
+  // Don't use hideMajor's onClose path — clear and open celebration
+  _majorOnClose=null;
+  majorPopup.classList.add("hidden");
+  showTrophyPopup(window._trophyNewsName, window._trophyNewsExtra, _trophyNewsCb);
+}
+function checkTop30(){
+  if(p.ovr>=90 && !p.top30){
+    p.top30=true;
+    p.fame=Math.min(100,p.fame+15);
+    log("🌟 WORLD CLASS! You are now ranked among the Top 30 players in the world. Fame +15.");
+    showMajor("🌟 WORLD CLASS",
+      `You have broken into the <b>Top 30 players in the world</b>.<br>Fame +15. Ballon d'Or contention is now possible.`,
+      `<button onclick="hideMajor()">Continue</button>`);
+  }
+}
+function maybeBallonDor(onDone){
+  if(p.ovr<88){ if(onDone) onDone(); return; }
+  let chance=0.08;
+  if(p.top30) chance+=0.08;
+  if(p.seasonGoals>=20) chance+=0.28;
+  else if(p.seasonGoals>=14) chance+=0.18;
+  else if(p.seasonGoals>=8) chance+=0.10;
+  if(p.seasonAssists>=10) chance+=0.10;
+  if(p.wins>=18) chance+=0.10;
+  if(p.competition==="Champions League") chance+=0.12;
+  if(p.ovr>=92) chance+=0.12;
+  if(p.ovr>=95) chance+=0.12;
+  if(p.fame>=70) chance+=0.08;
+  if(Math.random()<chance){
+    p.ballonWins++;
+    p.trophies++;
+    p.fame=Math.min(100,p.fame+25);
+    log(`🏆 BALLON D'OR WINNER! ${p.name} is the best player in the world this year. Fame +25.`);
+    showTrophyNews("Ballon d'Or", `Season: ${p.seasonGoals} goals, ${p.seasonAssists} assists. Total wins: ${p.ballonWins}.`, onDone);
+  } else {
+    if(p.ovr>=90 && (p.seasonGoals>=10 || p.seasonAssists>=8)){
+      log("You finished in the Ballon d'Or top 10 but did not win.");
+    }
+    if(onDone) onDone();
+  }
+}
+function closeBallon(){ballonCard.classList.add("hidden");}
+let _trophyCb=null;
+function showTrophyPopup(trophyName, extra, onDone){
+  _trophyCb=onDone||null;
+  showMajor("🏆 TROPHY WINNER — "+trophyName,
+    `${extra||""}<br><br>How do you celebrate this triumph?`,
+    `<button onclick="trophyCelebrate('party')">Night of partying (−2 Form)</button>
+     <button onclick="trophyCelebrate('media')">Media tour (+Fame, −1 Form)</button>
+     <button onclick="trophyCelebrate('family')">Quiet night with family (+Form)</button>
+     <button onclick="trophyCelebrate('gym')">Back to training next day (+Form, +Chem)</button>`);
+}
+function trophyCelebrate(choice){
+  hideMajor();
+  if(choice==="party"){
+    p.form=Math.max(10,p.form-2);
+    p.fame=Math.min(100,p.fame+4);
+    p.teamChem=Math.min(100,p.teamChem+3);
+    log("🎉 Trophy night out! Form −2 (sharpness), Fame +4, Chemistry +3.");
+  } else if(choice==="media"){
+    p.form=Math.max(10,p.form-1);
+    p.fame=Math.min(100,p.fame+8);
+    log("📺 Media tour after the trophy. Fame +8, Form −1.");
+  } else if(choice==="family"){
+    p.form=Math.min(100,p.form+4);
+    log("👨‍👩‍👧 Quiet celebration with family. Form +4.");
+  } else {
+    p.form=Math.min(100,p.form+3);
+    p.teamChem=Math.min(100,p.teamChem+2);
+    log("💪 Back in the gym the next day. Form +3, Chemistry +2.");
+  }
+  update();
+  if(_trophyCb){ const cb=_trophyCb; _trophyCb=null; cb(); }
+}
+// Age-based OVR ceiling from typical elite player curves (peak ~25–28)
+function ageOvrCap(age, pos){
+  // Soft max overall by age (elite trajectory)
+  let cap=78;
+  if(age<=16) cap=72;
+  else if(age===17) cap=76;
+  else if(age===18) cap=80;
+  else if(age===19) cap=84;
+  else if(age===20) cap=87;
+  else if(age===21) cap=90;
+  else if(age===22) cap=92;
+  else if(age===23) cap=94;
+  else if(age>=24 && age<=28) cap=99; // peak years
+  else if(age===29) cap=97;
+  else if(age===30) cap=94;
+  else if(age===31) cap=91;
+  else if(age===32) cap=88;
+  else if(age===33) cap=85;
+  else if(age===34) cap=82;
+  else if(age===35) cap=79;
+  else if(age===36) cap=76;
+  else if(age===37) cap=73;
+  else cap=70; // 38+
+  // GK / CB keep quality longer; wingers/pace roles decline earlier
+  if(["GK","CB"].includes(pos) && age>=30) cap=Math.min(99, cap+3);
+  if(["LW","RW","ST"].includes(pos) && age>=32) cap=Math.max(65, cap-2);
+  return cap;
+}
+function applyAgeing(){
+  const oldPot=p.pot;
+  const cap=ageOvrCap(p.age, p.pos);
+  // Performance this season drives potential shift
+  const perf=p.seasonGoals*2 + p.seasonAssists*1.5 + p.wins*0.5 + (p.form>=80?5:0) + (p.fame>=60?3:0);
+  let potChange=0;
+  if(p.age<=23){
+    // Young: strong seasons raise potential
+    if(perf>=30) potChange=2+Math.floor(Math.random()*2);
+    else if(perf>=15) potChange=1;
+    else if(perf<5) potChange=-1;
+  } else if(p.age<=28){
+    if(perf>=35) potChange=1;
+    else if(perf<10) potChange=-1;
+  } else if(p.age<=32){
+    // Post-peak: potential drifts down unless elite season
+    if(perf>=40) potChange=0;
+    else potChange=-1-Math.floor(Math.random()*2);
+  } else {
+    potChange=-2-Math.floor(Math.random()*2);
+  }
+  p.pot=Math.max(60, Math.min(99, Math.min(cap+2, p.pot+potChange)));
+  // OVR cannot exceed age cap (or pot)
+  const hardMax=Math.min(cap, 99);
+  if(p.ovr>hardMax){
+    const drop=p.ovr-hardMax;
+    p.ovr=hardMax;
+    log(`📉 Age ${p.age}: physical decline. OVR capped at ${hardMax} (−${drop}).`);
+  } else if(p.ovr>p.pot){
+    p.ovr=p.pot;
+  }
+  if(potChange!==0){
+    log(`Potential ${potChange>0?"+":""}${potChange} at age ${p.age} (season performance). Now POT ${p.pot}. Age cap ~${cap}.`);
+  } else {
+    log(`Age ${p.age}: OVR cap for your age/position is ~${cap}. POT ${p.pot}.`);
+  }
+}
+function clampOvrGain(gain){
+  const cap=ageOvrCap(p.age, p.pos);
+  const maxAllowed=Math.min(cap, Math.max(p.pot, cap)); // can slightly exceed pot toward age cap while young
+  if(p.ovr>=maxAllowed) return 0;
+  return Math.min(gain, maxAllowed-p.ovr);
+}
+function maybeInjury(source){
+  if(p.injured||p.retired) return;
+  // Career-ending chance: 1% base, +5% per season past age 33
+  let careerEndChance=0.01;
+  if(p.age>=33) careerEndChance+=0.05*Math.max(0, p.age-32);
+  if(p.refusedRetire) careerEndChance+=0.05;
+  careerEndChance=Math.min(0.45, careerEndChance);
+  if(Math.random()<careerEndChance && (source==="match"||p.age>=33)){
+    applyInjury({
+      name:"Career-ending injury",
+      games:999,
+      career:true,
+      seasonLong:true
+    }, true);
+    return;
+  }
+  // Regular injury chance
+  let chance=0.04;
+  if(source==="match") chance=0.06;
+  if(p.age>=30) chance+=0.03;
+  if(p.age>=33) chance+=0.04;
+  if(p.age>=36) chance+=0.06;
+  if(p.refusedRetire) chance+=0.05;
+  if(Math.random()>chance) return;
+  // Rare long-term (season+) injuries — lower chance
+  if(Math.random()<0.12){
+    const longTypes=[
+      {name:"Season-long ACL reconstruction",games:38,career:false,seasonLong:true},
+      {name:"Major cartilage damage (out for a season)",games:30,career:false,seasonLong:true},
+      {name:"Complex ankle reconstruction",games:25,career:false,seasonLong:true},
+      {name:"Stress fracture requiring long rest",games:20,career:false,seasonLong:true}
+    ];
+    applyInjury(longTypes[Math.floor(Math.random()*longTypes.length)], false);
+    return;
+  }
+  const types=[
+    {name:"Muscle strain",games:1,career:false},
+    {name:"Ankle sprain",games:2,career:false},
+    {name:"Hamstring tear",games:3,career:false},
+    {name:"Knee ligament damage",games:5,career:false},
+    {name:"Serious ACL injury",games:8,career:false}
+  ];
+  applyInjury(types[Math.floor(Math.random()*types.length)], false);
+}
+function applyInjury(inj, isCareerEnd){
+  p.injured=true;
+  p.injuryGames=inj.games;
+  p.form=Math.max(10,p.form-(inj.seasonLong?25:15));
+  p._lastInjuryName=inj.name;
+  p._lastInjuryBad=!!(isCareerEnd||inj.seasonLong);
+  injuryTitle.textContent="🏥 "+inj.name;
+  let msg=`You have suffered a <b>${inj.name}</b>.`;
+  if(inj.seasonLong && !isCareerEnd){
+    msg+=`<br>Expected absence: <b>most/all of the season</b> (~${Math.min(38,inj.games)} matches).`;
+  } else if(!isCareerEnd){
+    msg+=`<br>Expected absence: ${inj.games} match(es).`;
+  }
+  if(isCareerEnd){
+    msg+=`<br><br><b>Doctors say this may end your professional career.</b>`;
+    injuryChoices.innerHTML=`
+      <button onclick="resolveInjury(true)">Retire now</button>
+      <button onclick="resolveInjury(false)">Fight on (very high risk)</button>`;
+  } else {
+    injuryChoices.innerHTML=`<button onclick="resolveInjury(false)">OK</button>`;
+  }
+  injuryText.innerHTML=msg;
+  injuryCard.classList.remove("hidden");
+  log(`🏥 Injury: ${inj.name}${isCareerEnd?" — career-threatening":inj.seasonLong?" — long-term":" — out "+inj.games+" match(es)"}.`);
+}
+function showInjuryNews(injName, isCareerEnd, onDone){
+  const outlet=randomOutlet();
+  const headline=isCareerEnd
+    ? `CAREER IN DOUBT: ${p.name} suffers devastating injury`
+    : `BLOW FOR ${p.club.name.toUpperCase()}: ${p.name} ruled out long-term`;
+  const body=isCareerEnd
+    ? `<b>${outlet}</b> — ${p.name} has suffered a <b>${injName}</b>. Medical staff have not ruled out a career-ending outcome. Fans and teammates have sent messages of support.<br><br>${socialBuzz("bad")}`
+    : `<b>${outlet}</b> — ${p.name} will miss a large part of the season after a <b>${injName}</b>. ${p.club.name} face a difficult stretch without him.<br><br>${socialBuzz("bad")}`;
+  p.fame=Math.max(0,p.fame-(isCareerEnd?6:3));
+  log(`📰 ${outlet}: ${headline}`);
+  showMajor("📰 "+outlet,
+    `<div style="font-size:18px;font-weight:bold;margin-bottom:10px;color:#7dff9f">${headline}</div>
+     <div style="line-height:1.55">${body}</div>`,
+    `<button onclick="hideMajor()">Close article</button>`,
+    onDone||null);
+}
+function resolveInjury(forceRetire){
+  injuryCard.classList.add("hidden");
+  const bad=p._lastInjuryBad;
+  const name=p._lastInjuryName||"serious injury";
+  const isCareerDiag=p.injuryGames>=999;
+  const afterNews=()=>{
+    if(forceRetire){
+      endCareer("injury");
+    } else if(isCareerDiag){
+      if(Math.random()<0.7){
+        endCareer("injury_forced");
+      } else {
+        p.injuryGames=20;
+        p.ovr=Math.max(50,p.ovr-8);
+        p.pot=Math.max(55,p.pot-10);
+        log("Against the odds you continue — but OVR −8 and a long recovery ahead.");
+        update();
+      }
+    } else {
+      update();
+    }
+  };
+  if(bad){
+    showInjuryNews(name, isCareerDiag||forceRetire, afterNews);
+  } else {
+    afterNews();
+  }
+}
+function endCareer(reason){
+  p.retired=true;
+  const outlet=randomOutlet();
+  let headline, body, why;
+  if(reason==="injury"||reason==="injury_forced"){
+    why="injury";
+    headline=`END OF AN ERA: ${p.name} hangs up the boots after injury`;
+    body=`<b>${outlet}</b> — ${p.name} has been forced to retire following a serious injury at age ${p.age}. Career totals: <b>${p.goals}</b> goals, <b>${p.assists}</b> assists, <b>${p.trophies}</b> trophies${p.ballonWins?", Ballon d'Or ×"+p.ballonWins:""}.<br><br>${socialBuzz("bad")}`;
+    log("🏁 Career ended by injury.");
+  } else {
+    why="choice";
+    headline=`FAREWELL: ${p.name} announces retirement`;
+    body=`<b>${outlet}</b> — At ${p.age}, ${p.name} has chosen to retire. A career remembered for <b>${p.goals}</b> goals, <b>${p.assists}</b> assists, and <b>${p.trophies}</b> trophies${p.ballonWins?", including "+p.ballonWins+" Ballon d'Or(s)":""}.<br><br>${socialBuzz("trophy")}`;
+    log(`🏁 ${p.name} has retired at age ${p.age}. Career complete.`);
+  }
+  log(`📰 ${outlet}: ${headline}`);
+  showMajor("📰 "+outlet,
+    `<div style="font-size:18px;font-weight:bold;margin-bottom:10px;color:#7dff9f">${headline}</div>
+     <div style="line-height:1.55">${body}</div>
+     <div class="muted" style="margin-top:12px">${p.club.name} · Age ${p.age} · OVR ${p.ovr}</div>`,
+    `<button onclick="showHangUpBoots()">Continue</button>`,
+    null);
+}
+function showHangUpBoots(){
+  _majorOnClose=null;
+  majorPopup.classList.add("hidden");
+  showMajor("🏁 Hang Up Your Boots",
+    `Your playing career is over.<br><br>
+     <b>${p.name}</b> — ${p.goals} goals · ${p.assists} assists · ${p.cleanSheets} clean sheets · ${p.trophies} trophies${p.ballonWins?" · Ballon d'Or ×"+p.ballonWins:""}<br><br>
+     Ready to start a new story?`,
+    `<button onclick="hangUpBoots()">Hang up your boots</button>`);
+}
+function hangUpBoots(){
+  _majorOnClose=null;
+  majorPopup.classList.add("hidden");
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  p=null;
+  leagueTable=null;
+  liveMatch=null;
+  document.getElementById("career").classList.add("hidden");
+  document.getElementById("setup").classList.remove("hidden");
+  document.getElementById("continueBtn").classList.add("hidden");
+  document.getElementById("deleteSaveBtn").classList.add("hidden");
+  document.getElementById("saveInfo").textContent="Previous career ended. Create a new player below.";
+  // Reset matchday UI if open
+  const md=document.getElementById("matchday");
+  if(md) md.classList.add("hidden");
+  const logEl=document.getElementById("log");
+  if(logEl) logEl.innerHTML="";
+}
+function maybeManagerConvo(){
+  if(document.getElementById("dialogueCard").classList.contains("hidden")===false) return;
+  const prompts=[
+    ["Manager: 'We're under pressure. How are you handling it?'",["I’ll give everything for the team.","I need the team to support me.","Just tell me what to do."],[6,-1,2]],
+    ["Manager: 'A younger player wants your spot. What do you say?'",["I’ll compete and help him improve.","He should wait his turn.","I only care about starting."],[5,-2,1]],
+    ["Manager: 'The fans are unhappy after that result.'",["We’ll make it right next match.","The result wasn't my fault.","They need to be patient."],[4,-3,2]],
+    ["Manager: 'Your form has been inconsistent. Do you want more rest?'",["No, play me every game.","Yes, manage my minutes.","I’ll decide based on how I feel."],[2,4,1]],
+    ["Manager: 'Big transfer interest in you. Are you focused?'",["100% focused on this club.","I keep my options open.","If the right offer comes..."],[5,-1,0]],
+    ["Manager: 'The dressing room needs a leader. Can you be that guy?'",["Yes, I’ll step up.","I lead by example on the pitch.","Not my role."],[6,3,-2]]
+  ];
+  const q=prompts[Math.floor(Math.random()*prompts.length)];
+  dialogueTitle.textContent="Manager Talk";
+  dialogueText.textContent=q[0];
+  dialogueChoices.innerHTML=q[1].map((x,i)=>`<button onclick="managerChoice(${i},${q[2][i]})">${x}</button>`).join("");
+  dialogueCard.classList.remove("hidden");
+}
+function managerChoice(i,change){
+  dialogueCard.classList.add("hidden");
+  p.managerLike=Math.max(0,Math.min(100,p.managerLike+change));
+  log(`Manager reaction: ${change>=0?"+":""}${change} approval.`);
+  update();
+}
+function maybeDressingRoom(){
+  if(!document.getElementById("dressingCard").classList.contains("hidden")) return;
+  const events=[
+    {title:"Team Meal",text:"The squad invites you to a team dinner. Do you go?",choices:["Join and bond","Skip and rest"],effects:[[3,2],[-2,-1]]},
+    {title:"Locker Room Banter",text:"Teammates are joking about your last miss. How do you react?",choices:["Laugh it off","Get defensive","Challenge them to a shootout"],effects:[[2,3],[-3,-2],[1,4]]},
+    {title:"New Signing",text:"A big-name signing arrives and takes your preferred number. Reaction?",choices:["Welcome them warmly","Ask the club for a different number","Stay quiet"],effects:[[4,3],[-1,1],[0,0]]},
+    {title:"Captaincy Debate",text:"Players are discussing who should be captain. You...",choices:["Put yourself forward","Support a teammate","Stay out of it"],effects:[[2,1],[3,4],[0,1]]},
+    {title:"Social Media Drama",text:"A teammate posts something controversial. Do you?",choices:["Defend them publicly","Stay neutral","Distance yourself"],effects:[[-1,3],[1,1],[0,-2]]},
+    {title:"Training Argument",text:"You clash with a teammate during a drill. Aftermath?",choices:["Apologise first","Wait for them to apologise","Let the coach handle it"],effects:[[4,3],[-2,-3],[1,0]]}
+  ];
+  const e=events[Math.floor(Math.random()*events.length)];
+  dressingTitle.textContent="🏠 "+e.title;
+  dressingText.textContent=e.text;
+  dressingChoices.innerHTML=e.choices.map((c,i)=>`<button onclick="resolveDressing(${i},${JSON.stringify(e.effects[i])})">${c}</button>`).join("");
+  dressingCard.classList.remove("hidden");
+}
+function resolveDressing(idx,effects){
+  dressingCard.classList.add("hidden");
+  const [mgr,chem]=effects;
+  p.managerLike=Math.max(0,Math.min(100,p.managerLike+mgr));
+  p.teamChem=Math.max(0,Math.min(100,p.teamChem+chem));
+  log(`Dressing room: Manager ${mgr>=0?"+":""}${mgr}, Chemistry ${chem>=0?"+":""}${chem}.`);
+  update();
+}
+function checkRetirement(){
+  if(p.age<33 || p.retired || p.refusedRetire && p.age<36) return;
+  // Prompt at 33, 35, 37...
+  if(p.age===33 || p.age===35 || p.age>=37){
+    retireText.innerHTML=`You are ${p.age} years old. Many players hang up their boots around this age.<br><br>
+      Continuing means higher injury risk and possible career-ending injuries.<br>
+      What do you decide?`;
+    retireChoices.innerHTML=`
+      <button onclick="decideRetire(true)">Retire now (end career)</button>
+      <button onclick="decideRetire(false)">Keep playing (accept the risk)</button>`;
+    retireCard.classList.remove("hidden");
+  }
+}
+function decideRetire(yes){
+  retireCard.classList.add("hidden");
+  if(yes){
+    endCareer("choice");
+  } else {
+    p.refusedRetire=true;
+    log(`You choose to continue past ${p.age}. Injury risk is now significantly higher.`);
+    update();
+  }
+}
+// --- Penalty: pick shot direction vs AI keeper ---
+const PENALTY_DIRS = [
+  {id:"TL", label:"Top Left"},
+  {id:"TR", label:"Top Right"},
+  {id:"BL", label:"Bottom Left"},
+  {id:"BR", label:"Bottom Right"},
+  {id:"C",  label:"Center"},
+  {id:"TC", label:"Top Center"}
+];
+function triggerPenalty(){
+  if(!liveMatch || liveMatch.finished) return;
+  matchActions.classList.add("hidden");
+  showMajor("⚡ PENALTY!",
+    `Your team has won a penalty. You step up.<br><br>
+     <b>Choose where to shoot.</b> The keeper dives a random direction.<br>
+     • Same place as keeper → <b>SAVE</b><br>
+     • Different place & on target → <b>GOAL</b><br>
+     • (Power shots to corners are slightly harder but rewarding)`,
+    PENALTY_DIRS.map(d=>`<button onclick="takePenalty('${d.id}')">${d.label}</button>`).join("") +
+    `<button onclick="skipPenalty()" style="background:#234b37">Let a teammate take it</button>`);
+}
+function skipPenalty(){
+  hideMajor();
+  matchActions.classList.remove("hidden");
+  commentaryText.textContent="You let a teammate take the penalty...";
+  if(Math.random()<0.7){
+    scoreForPlayer();
+    liveMatch.rating=Math.min(10, liveMatch.rating+0.15);
+    commentaryText.textContent="Your teammate scores the penalty!";
+    log("Teammate scored the penalty.");
+  } else {
+    commentaryText.textContent="Your teammate misses the penalty.";
+    log("Teammate missed the penalty.");
+  }
+  updateMatchUI();
+  resumeMatchAfterEvent();
+}
+function takePenalty(dir){
+  hideMajor();
+  const keeperDir = PENALTY_DIRS[Math.floor(Math.random()*PENALTY_DIRS.length)].id;
+  // Slight miss chance on ambitious corners (independent of keeper)
+  const ambitious = (dir==="TL"||dir==="TR");
+  const missChance = ambitious ? 0.12 - p.ovr/1000 : 0.05 - p.ovr/1200;
+  const missedFrame = Math.random() < Math.max(0.02, missChance);
+  let outcome, text;
+  if(missedFrame){
+    outcome="miss";
+    text=`You aimed ${labelDir(dir)} but the shot flies wide / over the bar! Keeper went ${labelDir(keeperDir)}.`;
+  } else if(dir === keeperDir){
+    outcome="save";
+    text=`You shot ${labelDir(dir)} — the keeper guessed right and SAVES it!`;
+  } else {
+    outcome="goal";
+    text=`⚽ PENALTY GOAL! You went ${labelDir(dir)}, keeper dived ${labelDir(keeperDir)}. Net!`;
+  }
+  commentaryText.textContent=text;
+  if(outcome==="goal"){
+    liveMatch.goals++;
+    scoreForPlayer();
+    liveMatch.rating=Math.min(10, liveMatch.rating+1.1);
+    liveMatch.momentum=Math.min(100, liveMatch.momentum+12);
+    p.form=Math.min(100,p.form+5);
+    p.managerLike=Math.min(100,p.managerLike+4);
+    p.fame=Math.min(100,p.fame+3);
+    log("⚽ Penalty scored!");
+    setTimeout(()=>offerCelebration(), 100);
+  } else if(outcome==="save"){
+    liveMatch.rating=Math.max(4.5, liveMatch.rating-0.25);
+    liveMatch.momentum=Math.max(0, liveMatch.momentum-6);
+    p.form=Math.max(20,p.form-3);
+    log("Penalty saved by the keeper.");
+  } else {
+    liveMatch.rating=Math.max(4.5, liveMatch.rating-0.4);
+    liveMatch.momentum=Math.max(0, liveMatch.momentum-8);
+    p.form=Math.max(20,p.form-5);
+    p.managerLike=Math.max(0,p.managerLike-2);
+    log("Penalty missed (off target).");
+  }
+  matchActions.classList.remove("hidden");
+  updateMatchUI();
+  update();
+  resumeMatchAfterEvent();
+}
+function labelDir(id){
+  const d=PENALTY_DIRS.find(x=>x.id===id);
+  return d?d.label:id;
+}
+// --- Decision: dribble / assist / safe pass ---
+function triggerDecision(){
+  if(!liveMatch || liveMatch.finished) return;
+  matchActions.classList.add("hidden");
+  showMajor("🧠 Key Decision",
+    `You receive the ball in a dangerous area. What do you do?<br><br>
+     <b>Dribble</b> — risky, high reward if it comes off<br>
+     <b>Assist / through ball</b> — medium chance of a chance for a teammate<br>
+     <b>Pass back / recycle</b> — safe, keeps possession`,
+    `<button onclick="resolveDecision('dribble')">⚡ Dribble (risky)</button>
+     <button onclick="resolveDecision('assist')">🎯 Assist / through ball</button>
+     <button onclick="resolveDecision('safe')">🛡️ Pass back (safe)</button>`);
+}
+function resolveDecision(type){
+  hideMajor();
+  matchActions.classList.remove("hidden");
+  const m=liveMatch;
+  if(!m) return;
+  if(type==="dribble"){
+    // ~35-50% success based on OVR
+    const chance=Math.min(0.55, 0.32 + p.ovr/220);
+    if(Math.random()<chance){
+      m.rating=Math.min(10,m.rating+0.45);
+      m.momentum=Math.min(100,m.momentum+10);
+      p.form=Math.min(100,p.form+4);
+      commentaryText.textContent="✨ You beat the defender with a sharp dribble and create danger!";
+      // chance to score from the dribble
+      if(Math.random()<0.28+p.ovr/300){
+        m.goals++; scoreForPlayer();
+        m.rating=Math.min(10,m.rating+0.7);
+        commentaryText.textContent="✨ Dribble → finish! ⚽ GOOOAL!";
+        log("Goal after a successful dribble!");
+        setTimeout(()=>offerCelebration(), 100);
+      } else log("Successful dribble — chance created.");
+    } else {
+      m.rating=Math.max(4.5,m.rating-0.2);
+      m.momentum=Math.max(0,m.momentum-6);
+      p.form=Math.max(20,p.form-3);
+      commentaryText.textContent="The defender reads your dribble and wins the ball.";
+      log("Dribble failed — possession lost.");
+    }
+  } else if(type==="assist"){
+    // ~55-70% success
+    const chance=Math.min(0.78, 0.52 + p.ovr/280);
+    if(Math.random()<chance){
+      m.assists++;
+      m.rating=Math.min(10,m.rating+0.55);
+      m.momentum=Math.min(100,m.momentum+8);
+      p.form=Math.min(100,p.form+3);
+      p.managerLike=Math.min(100,p.managerLike+2);
+      // teammate finishes?
+      if(Math.random()<0.6){
+        scoreForPlayer();
+        commentaryText.textContent="🎯 Perfect through ball — teammate scores!";
+        log("Assist! Teammate finishes.");
+      } else {
+        commentaryText.textContent="🎯 Great pass, but the finish is saved or blocked.";
+        log("Chance created from through ball (no goal).");
+      }
+    } else {
+      m.rating=Math.max(4.5,m.rating-0.1);
+      commentaryText.textContent="The through ball is intercepted.";
+      log("Assist attempt intercepted.");
+    }
+  } else {
+    // safe — always works
+    m.rating=Math.min(10,m.rating+0.1);
+    m.momentum=Math.min(100,m.momentum+2);
+    p.form=Math.min(100,p.form+1);
+    commentaryText.textContent="Safe pass back. Possession retained, no risk taken.";
+    log("Safe decision — possession kept.");
+  }
+  updateMatchUI();
+  update();
+  resumeMatchAfterEvent();
+}
+function resumeMatchAfterEvent(){
+  if(!liveMatch || liveMatch.finished) return;
+  if(liveMatch.redCarded){
+    // Sent off — force full-time with current score
+    matchActions.classList.add("hidden");
+    commentaryText.textContent=(commentaryText.textContent||"")+" You have been sent off.";
+    liveMatch.minute=90;
+    finishLiveMatch();
+    return;
+  }
+  if(liveMatch.minute>=90 || liveMatch.energy<=5) finishLiveMatch();
+}
+function triggerTackle(){
+  if(!liveMatch || liveMatch.finished) return;
+  matchActions.classList.add("hidden");
+  showMajor("⚠️ Defensive Decision",
+    `An opponent is through on goal. What do you do?<br><br>
+     <b>A. Risky tackle</b> — can win the ball, but chance of a red card<br>
+     <b>B. Don't tackle</b> — safer for you, but they may score<br>
+     <b>C. Bad tackle / start a fight</b> — red card, fight, −5 manager approval, 1-game ban`,
+    `<button onclick="resolveTackle('risky')">A. Risky tackle</button>
+     <button onclick="resolveTackle('hold')">B. Don't tackle</button>
+     <button onclick="resolveTackle('fight')">C. Bad tackle — start a fight</button>`);
+}
+function resolveTackle(choice){
+  hideMajor();
+  matchActions.classList.remove("hidden");
+  const m=liveMatch;
+  if(!m) return;
+  if(choice==="risky"){
+    // ~55% win ball clean, ~25% foul yellow-ish / nothing, ~20% red
+    const roll=Math.random();
+    if(roll<0.55){
+      m.rating=Math.min(10,m.rating+0.35);
+      m.momentum=Math.min(100,m.momentum+8);
+      p.teamChem=Math.min(100,p.teamChem+2);
+      commentaryText.textContent="💪 Perfect timing! You win the ball with a clean, brave tackle.";
+      log("Risky tackle succeeded — ball won.");
+    } else if(roll<0.80){
+      m.rating=Math.max(4.5,m.rating-0.15);
+      // opponent may still score
+      if(Math.random()<0.45){
+        if(m.home) m.awayScore++; else m.homeScore++;
+        m.momentum=Math.max(0,m.momentum-10);
+        commentaryText.textContent="You mistime the tackle. Free kick / chance — opponent scores!";
+        log("Risky tackle failed — opponent scored.");
+      } else {
+        commentaryText.textContent="Mistimed tackle. Free kick, but the defence recovers.";
+        log("Risky tackle fouled — no goal.");
+      }
+    } else {
+      // Red card
+      m.redCarded=true;
+      m.rating=Math.max(4.5,m.rating-0.8);
+      p.teamChem=Math.max(0,p.teamChem-3);
+      p.suspended=Math.max(p.suspended,1);
+      p.fame=Math.max(0,p.fame-2);
+      commentaryText.textContent="🟥 RED CARD! Your risky tackle was reckless. You are sent off. 1-match suspension.";
+      log("🟥 Red card from a risky tackle. Suspended 1 match.");
+      p._pendingRedTalk=true;
+    }
+  } else if(choice==="hold"){
+    // Don't tackle — higher chance opponent scores
+    if(Math.random()<0.55){
+      if(m.home) m.awayScore++; else m.homeScore++;
+      m.momentum=Math.max(0,m.momentum-12);
+      m.rating=Math.max(4.5,m.rating-0.2);
+      commentaryText.textContent="You hold back… the attacker finishes. Goal for them.";
+      log("Held back from tackle — opponent scored.");
+    } else {
+      m.rating=Math.min(10,m.rating+0.1);
+      p.managerLike=Math.min(100,p.managerLike+1);
+      commentaryText.textContent="You stay on your feet. Teammates recover and clear the danger.";
+      log("Held back — defence recovered, no goal.");
+    }
+  } else {
+    // Bad tackle + fight
+    m.redCarded=true;
+    m.rating=Math.max(4.5,m.rating-1.2);
+    p.teamChem=Math.max(0,p.teamChem-6);
+    p.suspended=Math.max(p.suspended,1);
+    p.fame=Math.max(0,p.fame-5);
+    p.form=Math.max(15,p.form-5);
+    commentaryText.textContent="🟥 You make a terrible tackle and a fight breaks out! Red card, 1-game ban. Manager is furious.";
+    log("🟥 Fight after a bad tackle. Red card, suspended 1 match.");
+    p._pendingRedTalk=true;
+  }
+  updateMatchUI();
+  update();
+  resumeMatchAfterEvent();
+}
+function managerRedCardTalk(){
+  p.managerLike=Math.max(0,p.managerLike-20);
+  log("Manager approval −20 after the red card.");
+  showMajor("😤 Manager Talk — Red Card",
+    `The manager is furious about your red card.<br><br>
+     <i>"That was unacceptable. You've let the team down."</i><br><br>
+     Manager approval: <b>−20</b> (now ${p.managerLike}). How do you respond?`,
+    `<button onclick="redTalkReply(0)">Apologise and accept the criticism</button>
+     <button onclick="redTalkReply(1)">Say it was a harsh decision</button>
+     <button onclick="redTalkReply(2)">Stay silent</button>`);
+}
+function redTalkReply(i){
+  hideMajor();
+  if(i===0){
+    p.managerLike=Math.min(100,p.managerLike+4);
+    p.teamChem=Math.min(100,p.teamChem+2);
+    log("You apologised. Manager softens slightly (+4).");
+  } else if(i===1){
+    p.managerLike=Math.max(0,p.managerLike-3);
+    log("You argued back. Manager is even more annoyed (−3).");
+  } else {
+    log("You stayed silent. The meeting ends coldly.");
+  }
+  update();
+}
+function finishLeagueSeason(){
+  if(leagueTable){ syncPlayerRow(); simulateOtherResults(); sortLeagueTable(); }
+  else p.leaguePos=Math.max(1,Math.min(20,21-Math.floor(p.points/2.7)+Math.floor(Math.random()*3)));
+  log(`🏁 38 league games completed! You finished ${p.leaguePos}th with ${p.points} points.`);
+  if(p.leaguePos<=4 && ["England","France","Spain","Germany","Italy"].includes(p.country)){
+    p.competition="Champions League";
+    log("🏆 Your club qualifies for the Champions League!");
+  } else if(p.leaguePos<=6 && ["England","France","Spain","Germany","Italy","Portugal","Netherlands"].includes(p.country)){
+    p.competition="Europa League";
+    log("🌍 Your club earns European football next season.");
+  } else p.competition="Domestic League";
+  p.seasonSummaryPending=true;
+  // 1) Trophy celebrations first (league title), then summary → Ballon → CL → transfer
+  if(p.leaguePos===1){
+    p.fame=Math.min(100,p.fame+12);
+    p.trophies++;
+    log("🏆 LEAGUE CHAMPIONS!");
+    showTrophyNews("League Title", `You and ${p.club.name} are <b>league champions</b> (${p.leagueName||clubLeagueName(p.club)}). Fame +12. Trophies: ${p.trophies}`, ()=>showSeasonSummary());
+  } else {
+    showSeasonSummary();
+  }
+}
+function showSeasonSummary(){
+  const bonus=p.wins*80+p.seasonGoals*100+p.seasonAssists*60+(p.top30?500:0);
+  p.money+=bonus;
+  log(`Season awards: ${p.seasonGoals} goals, ${p.seasonAssists} assists, ${p.wins} wins, ${p.draws} draws, ${p.losses} losses. Bonus: $${bonus}.`);
+  // Ballon may show trophy popup; chain into European + transfer
+  const afterHonours=()=>{
+    const afterEuro=()=>{
+      openTransferWindow("End-of-Season Transfer Window", ()=>{
+        p.age++;p.season++;
+        applyAgeing();
+        p.games=0;p.wins=0;p.draws=0;p.losses=0;p.points=0;
+        p.seasonGoals=0;p.seasonAssists=0;p.form=78;
+        p._midWindowDone=false;
+        p.contractYears=Math.max(0,p.contractYears-1);
+        buildLeagueTable();
+        if(p.contractYears<=0){
+          log("Your contract has expired. You must sign a new deal or move.");
+          p.contractYears=1;
+        }
+        maybeInternationalCallup();
+        checkRetirement();
+        update();
+      });
+    };
+    if(p.competition==="Champions League") playEuropeanSeason(afterEuro);
+    else {
+      if(p.competition==="Europa League") log("Europa League fixtures will appear during the new season.");
+      afterEuro();
+    }
+  };
+  maybeBallonDor(afterHonours);
+}
+function playEuropeanSeason(onDone){
+  log("⭐ Champions League season begins: 8 league-phase matches.");
+  let wins=0;
+  for(let i=0;i<8;i++) if(Math.random()<Math.max(.25,p.ovr/100)) wins++;
+  log(`Champions League league phase simulated: ${wins}/8 wins.`);
+  if(wins>=4){
+    log("🔥 Your club reaches the Champions League knockout rounds!");
+    p.fame=Math.min(100,p.fame+5);
+    if(Math.random()<.28){
+      p.fame=Math.min(100,p.fame+20);
+      p.trophies++;
+      log("🏆 YOU WIN THE CHAMPIONS LEAGUE! Fame +20.");
+      showTrophyNews("Champions League", `You lifted the biggest club trophy in the world with ${p.club.name}! Fame +20. Trophies: ${p.trophies}`, onDone);
+      return;
+    }
+  } else log("Your Champions League run ends in the league phase.");
+  if(onDone) onDone();
+}
+function maybeInternationalCallup(){
+  const strength={Brazil:80,France:79,Spain:78,England:77,Germany:77,Argentina:79,Portugal:76,Italy:76,Netherlands:76,Belgium:75,"Saudi Arabia":75,"South Korea":75,Japan:75,USA:75,Singapore:75,Yemen:75};
+  const req=strength[p.country]||75;
+  if(!p.international && p.ovr>=req && !p._natOffered){
+    p._natOffered=true;
+    showMajor("🌍 NATIONAL TEAM CALL-UP",
+      `<b>${p.country}</b> has called you up to the national team.<br><br>Do you accept the call-up?`,
+      `<button onclick="acceptNational(true)">Accept call-up</button>
+       <button onclick="acceptNational(false)">Decline</button>`);
+  }
+}
+function acceptNational(yes){
+  hideMajor();
+  if(yes){
+    p.international=true;
+    p.fame=Math.min(100,p.fame+10);
+    p.managerLike=Math.min(100,p.managerLike+2);
+    log(`🌍 You accepted the ${p.country} national team call-up! Fame +10.`);
+    if(Math.random()<.4){
+      p.worldCup=true;
+      p.fame=Math.min(100,p.fame+8);
+      setTimeout(()=>showMajor("🏆 WORLD CUP SQUAD",
+        `You have been selected for the <b>World Cup</b> squad for ${p.country}!<br>Fame +8.`,
+        `<button onclick="hideMajor()">Incredible!</button>`),300);
+      log("🏆 You make the World Cup squad! Fame +8.");
+    }
+  } else {
+    p.fame=Math.max(0,p.fame-5);
+    p.managerLike=Math.max(0,p.managerLike-4);
+    log(`You declined the ${p.country} call-up. Fame -5. Some fans and the federation are disappointed.`);
+  }
+  update();
+}
+let leagueTable=null; // array of {name, played, won, drawn, lost, gf, ga, pts, isPlayer}
+function buildLeagueTable(){
+  // 19 other clubs from SAME division (country + level)
+  const pool=divisionPool(p.club);
+  const others=[];
+  const used=new Set();
+  // Prefer unique picks from division
+  const shuffled=[...pool].sort(()=>Math.random()-0.5);
+  for(const c of shuffled){
+    if(others.length>=19) break;
+    if(used.has(c.name)) continue;
+    used.add(c.name);
+    others.push({name:c.name, played:0, won:0, drawn:0, lost:0, gf:0, ga:0, pts:0, isPlayer:false, strength:c.level||1});
+  }
+  // Pad with synthetic divisional rivals if needed
+  let n=1;
+  while(others.length<19){
+    const name=`${clubLeagueName(p.club)} Rival ${n++}`;
+    if(used.has(name)) continue;
+    used.add(name);
+    others.push({name, played:0, won:0, drawn:0, lost:0, gf:0, ga:0, pts:0, isPlayer:false, strength:p.club.level||1});
+  }
+  leagueTable=[
+    {name:p.club.name, played:0, won:0, drawn:0, lost:0, gf:0, ga:0, pts:0, isPlayer:true, strength:p.club.level||1},
+    ...others
+  ];
+  p.leagueName=clubLeagueName(p.club);
+}
+function syncPlayerRow(){
+  if(!leagueTable) return;
+  const row=leagueTable.find(t=>t.isPlayer);
+  if(!row) return;
+  row.name=p.club.name;
+  row.played=p.games;
+  row.won=p.wins;
+  row.drawn=p.draws;
+  row.lost=p.losses;
+  row.pts=p.points;
+  // approximate GF/GA from season goals if needed
+  row.gf=Math.max(row.gf, p.seasonGoals + p.wins*1);
+  row.ga=Math.max(row.ga, p.losses*2 + p.draws);
+}
+function simulateOtherResults(){
+  if(!leagueTable) return;
+  // Each matchday, other teams play ~1 game among themselves (simplified)
+  leagueTable.forEach(t=>{
+    if(t.isPlayer) return;
+    if(t.played>=p.games) return; // keep roughly in sync with player games
+    // play until they catch up to player games played
+    while(t.played < p.games){
+      const oppStr=2+Math.random()*3;
+      const myStr=t.strength + (Math.random()-0.5);
+      const roll=Math.random();
+      let res;
+      if(roll < 0.35 + (myStr-oppStr)*0.06) res="W";
+      else if(roll < 0.60) res="D";
+      else res="L";
+      t.played++;
+      if(res==="W"){ t.won++; t.pts+=3; t.gf+=1+Math.floor(Math.random()*3); t.ga+=Math.floor(Math.random()*2); }
+      else if(res==="D"){ t.drawn++; t.pts+=1; t.gf+=Math.floor(Math.random()*2); t.ga+=Math.floor(Math.random()*2); }
+      else { t.lost++; t.gf+=Math.floor(Math.random()*2); t.ga+=1+Math.floor(Math.random()*3); }
+    }
+  });
+}
+function sortLeagueTable(){
+  if(!leagueTable) return;
+  leagueTable.sort((a,b)=>{
+    if(b.pts!==a.pts) return b.pts-a.pts;
+    const gda=a.gf-a.ga, gdb=b.gf-b.ga;
+    if(gdb!==gda) return gdb-gda;
+    return b.gf-a.gf;
+  });
+  const idx=leagueTable.findIndex(t=>t.isPlayer);
+  p.leaguePos=idx>=0?idx+1:20;
+}
+function openLeagueTable(){
+  if(!p) return;
+  if(!leagueTable) buildLeagueTable();
+  syncPlayerRow();
+  simulateOtherResults();
+  sortLeagueTable();
+  const lg=p.leagueName||clubLeagueName(p.club);
+  let html=`<div class="muted" style="margin-bottom:10px"><b>${lg}</b> · After ${p.games}/38 matches · Win = 3 pts · Draw = 1 · Loss = 0</div>`;
+  html+=`<div style="overflow:auto;max-height:60vh"><table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="text-align:left;color:#a9c8b2;border-bottom:1px solid #356348">
+      <th style="padding:6px 4px">#</th><th style="padding:6px 4px">Club</th>
+      <th style="padding:6px 4px">P</th><th style="padding:6px 4px">W</th><th style="padding:6px 4px">D</th><th style="padding:6px 4px">L</th>
+      <th style="padding:6px 4px">GF</th><th style="padding:6px 4px">GA</th><th style="padding:6px 4px">GD</th><th style="padding:6px 4px">Pts</th>
+    </tr></thead><tbody>`;
+  leagueTable.forEach((t,i)=>{
+    const gd=t.gf-t.ga;
+    const gdStr=gd>0?"+"+gd:gd;
+    const hl=t.isPlayer?'background:#1a4a2e;font-weight:bold;color:#7dff9f':'';
+    html+=`<tr style="${hl};border-bottom:1px solid #1e3328">
+      <td style="padding:7px 4px">${i+1}</td>
+      <td style="padding:7px 4px">${t.isPlayer?"▶ ":""}${t.name}</td>
+      <td style="padding:7px 4px">${t.played}</td>
+      <td style="padding:7px 4px">${t.won}</td>
+      <td style="padding:7px 4px">${t.drawn}</td>
+      <td style="padding:7px 4px">${t.lost}</td>
+      <td style="padding:7px 4px">${t.gf}</td>
+      <td style="padding:7px 4px">${t.ga}</td>
+      <td style="padding:7px 4px">${gdStr}</td>
+      <td style="padding:7px 4px"><b>${t.pts}</b></td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  showMajor("📊 "+lg, html, `<button onclick="hideMajor()">Close</button>`);
+  update();
+}
+function rest(){
+  if(p.retired){log("You have retired.");return;}
+  p.form=Math.min(100,p.form+10);
+  if(p.injured && Math.random()<.25){p.injuryGames=Math.max(0,p.injuryGames-1);if(p.injuryGames===0){p.injured=false;log("Rest helped your recovery — you are fit again!");}}
+  log("You rested and recovered. Form +10.");
+  maybeInjury("rest");
+  update();
+}
+let _transferCb=null;
+let _currentOffers=[];
+function clubAttractiveness(c){
+  // Higher OVR + Fame unlocks better clubs — any country
+  // ~7% easier vs previous thresholds
+  const score=p.ovr*0.7 + p.fame*0.35 + (p.top30?8:0) + (p.international?4:0) + (p.ballonWins*5);
+  const need={1:35,2:46,3:57,4:70,5:80};
+  const homeBonus = c.country===p.country ? 5 : 0;
+  return score + homeBonus >= (need[c.level]||65);
+}
+function wageOffer(club){
+  const base=p.ovr*18 + p.fame*12 + club.level*120;
+  // Foreign big clubs pay a bit more
+  const foreignBoost = club.country!==p.country ? 1.08 : 1;
+  const mult=(0.85+Math.random()*0.4)*foreignBoost;
+  return Math.max(400, Math.round(base*mult/50)*50);
+}
+function yearsOffer(){
+  const opts=[2,3,4,5];
+  return opts[Math.floor(Math.random()*opts.length)];
+}
+function openTransferWindow(title, onClose){
+  _transferCb=onClose||null;
+  // Worldwide pool based on OVR + Fame
+  const eligible=clubs.filter(c=>c.name!==p.club.name && clubAttractiveness(c));
+  // Mix: sort by level, but shuffle so many countries appear
+  eligible.sort((a,b)=>{
+    const sa=a.level*10 + Math.random()*8;
+    const sb=b.level*10 + Math.random()*8;
+    return sb-sa;
+  });
+  const count=Math.min(6, Math.max(3, Math.floor((p.ovr+p.fame)/22)));
+  const picks=[];
+  const countriesUsed=new Set();
+  // First pass: prefer diverse countries
+  for(const c of eligible){
+    if(picks.length>=count) break;
+    if(countriesUsed.has(c.country) && picks.length>=2) continue;
+    if(picks.find(x=>x.club.name===c.name)) continue;
+    picks.push({club:c, wage:wageOffer(c), years:yearsOffer()});
+    countriesUsed.add(c.country);
+  }
+  // Fill remaining slots from any eligible
+  for(const c of eligible){
+    if(picks.length>=count) break;
+    if(picks.find(x=>x.club.name===c.name)) continue;
+    picks.push({club:c, wage:wageOffer(c), years:yearsOffer()});
+  }
+  // Ensure at least one foreign offer if player is decent
+  if(p.ovr>=62 || p.fame>=25){
+    const foreign=eligible.filter(c=>c.country!==p.country && !picks.find(x=>x.club.name===c.name));
+    if(foreign.length && !picks.some(o=>o.club.country!==p.country)){
+      const c=foreign[Math.floor(Math.random()*Math.min(15,foreign.length))];
+      picks.push({club:c, wage:wageOffer(c), years:yearsOffer()});
+    }
+  }
+  // Fallback if still empty
+  if(picks.length===0){
+    const any=clubs.filter(c=>c.name!==p.club.name).sort(()=>Math.random()-0.5).slice(0,3);
+    any.forEach(c=>picks.push({club:c, wage:wageOffer(c), years:yearsOffer()}));
+  }
+  _currentOffers=picks;
+  // Extension offer from current club
+  const extWage=Math.round(p.wage*(1.05+p.ovr/200+p.fame/250));
+  const extYears=2+Math.floor(Math.random()*3);
+  let html=`<div style="margin-bottom:12px"><b>Current:</b> ${p.club.name} · $${p.wage.toLocaleString()}/wk · ${p.contractYears}y left</div>`;
+  html+=`<div style="margin-bottom:10px;padding:10px;background:#0a1710;border-radius:10px;border:1px solid #356348">
+    <b>Stay & extend with ${p.club.name}</b><br>
+    <span class="muted">New wage $${extWage.toLocaleString()}/wk · ${extYears} years</span><br>
+    <button style="margin-top:8px;width:auto;padding:8px 16px" onclick="acceptExtend(${extWage},${extYears})">Sign extension</button>
+  </div>`;
+  if(picks.length===0){
+    html+=`<p class="muted">No clubs are interested right now. Raise your Overall and Fame.</p>`;
+  } else {
+    html+=`<p style="margin:8px 0 6px"><b>Clubs interested in you</b> <span class="muted">(worldwide · OVR ${p.ovr} + Fame ${Math.floor(p.fame)})</span></p>`;
+    picks.forEach((o,i)=>{
+      const stars="★".repeat(o.club.level)+"☆".repeat(5-o.club.level);
+      const abroad=o.club.country!==p.country ? " · 🌍 Abroad" : " · Home";
+      const divName=clubLeagueName(o.club);
+      html+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #244232">
+        <div><b>${o.club.name}</b><br><span class="muted">${divName} · ${o.club.country}${abroad} · ${stars}<br>$${o.wage.toLocaleString()}/wk · ${o.years} year deal</span></div>
+        <button style="width:110px;flex-shrink:0" onclick="acceptTransfer(${i})">Join</button>
+      </div>`;
+    });
+  }
+  html+=`<button style="margin-top:14px;background:#234b37" onclick="closeTransferWindow()">Stay at current club (no change)</button>`;
+  showMajor("📋 "+title, html, "");
+  // majorChoices left empty; buttons are inside text
+  majorChoices.innerHTML="";
+}
+function acceptExtend(wage, years){
+  p.wage=wage;
+  p.contractYears=years;
+  p.managerLike=Math.min(100,p.managerLike+5);
+  p.teamChem=Math.min(100,p.teamChem+3);
+  log(`📝 Contract extended at ${p.club.name}: $${wage.toLocaleString()}/wk for ${years} years.`);
+  closeTransferWindow();
+}
+function acceptTransfer(idx){
+  const o=_currentOffers[idx];
+  if(!o) return;
+  const oldLevel=p.club.level||3;
+  p.club=o.club;
+  p.wage=o.wage;
+  p.contractYears=o.years;
+  p.form=Math.min(100,p.form+5);
+  p.managerLike=70;
+  p.teamChem=60;
+  p.leagueName=clubLeagueName(o.club);
+  // New club → rebuild league table for their division
+  buildLeagueTable();
+  if(o.club.level>oldLevel){
+    p.fame=Math.min(100,p.fame+5+o.club.level);
+    log(`✈️ TRANSFER: You joined ${o.club.name} (${p.leagueName}, ${o.club.country}) on $${o.wage.toLocaleString()}/wk for ${o.years} years. Fame up!`);
+  } else {
+    log(`✈️ TRANSFER: You joined ${o.club.name} (${p.leagueName}, ${o.club.country}) on $${o.wage.toLocaleString()}/wk for ${o.years} years.`);
+  }
+  closeTransferWindow();
+}
+function closeTransferWindow(){
+  hideMajor();
+  if(_transferCb){ const cb=_transferCb; _transferCb=null; cb(); }
+  update();
+}
+</script>
+</body>
+</html>
